@@ -1,0 +1,11 @@
+// src/users/users.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from '../entity/user.entity'; // Adjust the import path as necessary
+import { UsersService } from '../services/user.service'; // Adjust the import path as necessary
+@Module({
+  imports: [TypeOrmModule.forFeature([User])],
+  providers: [UsersService],
+  exports: [UsersService], // 👈 Needed so AuthModule can use it
+})
+export class UsersModule {}
