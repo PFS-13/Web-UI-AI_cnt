@@ -1,13 +1,18 @@
-import UserForm from "./components/UserForm";
-import UserEvents from "./components/UserEvents";
+// src/App.tsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './Login';
+import Register from './Register';
 
-function App() {
+const App: React.FC = () => {
   return (
-    <div>
-      <UserForm />
-      <UserEvents />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;
