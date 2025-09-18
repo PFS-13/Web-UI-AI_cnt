@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AuthModule } from './modules/auth.module';
 import { UsersModule } from './modules/user.module';
-import { User } from './entity/user.entity';
-
+import { ConversationModule } from './modules/conversation.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -15,7 +12,6 @@ import { User } from './entity/user.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User],
       synchronize: false,
       autoLoadEntities: true,
       ssl: process.env.NODE_ENV === 'production' ? {
@@ -24,10 +20,11 @@ import { User } from './entity/user.entity';
       logging: false,
     }),
     AuthModule,
+    ConversationModule,
     UsersModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {
   constructor() {

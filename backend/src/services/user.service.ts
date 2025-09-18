@@ -1,8 +1,9 @@
 // src/users/users.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { User } from '../entity/user.entity'; // Adjust the import path as necessary
+import { UUID } from 'crypto';
 
 @Injectable()
 export class UsersService {
@@ -11,19 +12,22 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async findByEmail(email: string): Promise<User | null> {
-    return await this.usersRepository.findOne({ where: { email } });
-  }
+  async findByEmail(email: string, manager?: EntityManager) {
+      const repo = manager ? manager.getRepository(User) : this.usersRepository;
+      return repo.findOne({ where: { email } });
+    }
 
-  async findById(id: string): Promise<User | null> {
-    return await this.usersRepository.findOne({ where: { id } });
-  }
+  async findById(id: UUID, manager?:EntityManager): Promise<User | null> {
+      const repo = manager ? manager.getRepository(User) : this.usersRepository;
+      return repo.findOne({ where: { id } });  
+    }
   
-  async activate(id: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+  async activate(id: UUID, manager?: EntityManager): Promise<User | null> {
+    const repo = manager ? manager.getRepository(User) : this.usersRepository;
+    const user = await repo.findOne({ where: { id } });
     if (user) {
       user.is_active = true;
-      await this.usersRepository.save(user);
+      await repo.save(user);
     }
     return user;
   }

@@ -1,26 +1,31 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './user.service';
+import { DataSource } from 'typeorm';
+import { User } from '../entity/user.entity';
+import { Token } from '../entity/token.entity';
 import { TokenService } from './token.service';
 
-import { AuthDto } from '../dtos/login.dto';
+import { AuthDto,VerifyOtpDto} from '../dtos/auth.dto';
 import { AuthProvider } from '../entity/user.entity';
-import * as nodemailer from 'nodemailer';
+import { createTransport, Transporter } from 'nodemailer';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import {UUID,randomInt}  from 'crypto';
 
 
 @Injectable()
 export class AuthService {
-    private transporter: nodemailer.Transporter;
-
+    private transporter: Transporter;
+    
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private tokenService: TokenService,
+    private readonly dataSource: DataSource
+
   ) {
-    this.transporter = nodemailer.createTransport({
+    this.transporter = createTransport({
       service: 'gmail', // or your preferred email service
         auth: {
           user: process.env.EMAIL_USER,
@@ -33,56 +38,107 @@ export class AuthService {
       })
   }
 
+   async handleGoogleLogin(userData: { username: string; email: string; image_url: string }) {
+    let user = await this.usersService.findByEmail(userData.email);
+
+    if (!user) {
+      user = await this.usersService.create({
+        username: userData.username,
+        email: userData.email,
+        image_url: userData.image_url,
+      });
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Failed to create or retrieve user.');
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.username,
+      image_url: user.image_url || null,
+    };
+
+    const token = this.jwtService.sign(payload);
+    return { token, user };
+  }
+
   async checkEmail(email: string) {
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
-      throw new UnauthorizedException('Email already in use');
+        return existingUser.provider
+    } else {
+        return null
     }
-    return true;
   }
 
-  async hashPassword(password: string): Promise<string> {
+async hashPassword(password: string): Promise<string> {
   const saltRounds = 5;
   return await bcrypt.hash(password, saltRounds);
 }
 
-  async register({email, password}: AuthDto) {
-    //! Membuat user baru
-    const existing_user = await this.usersService.findByEmail(email);
+ 
+async createUser({ email, password }: AuthDto): Promise<User> {
+  return await this.dataSource.transaction(async (manager) => {
+    //! Cek user sudah ada
+    const existing_user = await manager.findOne(User, { where: { email } });
     if (existing_user) {
-      throw new UnauthorizedException('Email already in use');
+      throw new ConflictException('Email already in use');
     }
+    //! Hash password
     const hashed_password = await this.hashPassword(password);
-    const new_user = await this.usersService.create({email, password: hashed_password, provider:AuthProvider.MANUAL});
-    
-    //! Mengirim token verifikasi email
-    const code = crypto.randomInt(100000, 1000000).toString();
-    console.log(`Generated OTP code for ${email}: ${code}|`);
+    //! Simpan user baru
+    const new_user = manager.create(User, {
+      email,
+      password: hashed_password,
+      provider: AuthProvider.MANUAL,
+    });
+    return await manager.save(new_user);
+  });
+}
+
+async sendEmailVerification(id:UUID, email:string): Promise<void> {
+      //! Generate OTP
+    return await this.dataSource.transaction(async (manager) => {
+    const code = randomInt(0, 1000000).toString().padStart(6, '0');
     const hashed_code = await this.hashPassword(code);
-    console.log(`Hashed OTP code ${hashed_code}`);
-    await this.tokenService.create({user_Id: new_user.id, code: hashed_code});
-    await this.sendEmail(email, code);
-    return true;
-  }
-
-  async verifyOtp(otp:string, email:string) {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    //! Simpan token ke DB
+    const token = manager.create(Token, {
+      user_Id: id,
+      code: hashed_code,
+    });
+    await manager.save(token);
+    //! Kirim email (⚠️ di luar transaction, supaya tidak menahan DB)
+    try {
+      await this.sendEmail(email, code);
+    } catch (err) {
+      throw new Error('Failed to send verification email');
     }
-    const is_valid = await this.tokenService.verify(user.id, otp);
-    if (!is_valid) {
-      throw new UnauthorizedException('Invalid OTP');
-    } 
-
-    await this.usersService.activate(user.id);
-    //! Hapus token setelah verifikasi berhasil
-    await this.tokenService.delete(user.id);
-    return true;
+    });
   }
 
-  
+async register({ email, password }: AuthDto): Promise<{ message: string; user_id: string }> {
+  const new_user = await this.createUser({ email, password });
+  await this.sendEmailVerification(new_user.id, new_user.email);
+  return {
+    message: 'Registration successful. Please check your email for verification.',
+    user_id: new_user.id,
+  };
+}
 
+   async verifyOtp({ user_id, otp }: VerifyOtpDto): Promise<{message : string}> {
+    return this.dataSource.transaction(async (manager) => {
+      const user = await this.usersService.findById(user_id, manager);
+      if (!user) {
+        throw new NotFoundException('Email Not found');
+      }
+      await this.tokenService.verify(user.id, otp, manager);
+      await this.usersService.activate(user.id, manager);
+      await this.tokenService.delete(user.id, manager);
+      return {message : 'User verified successfully'};
+    });
+  }
 
   async validateUser(loginDto: AuthDto): Promise<any> {
     const user = await this.usersService.findByEmail(loginDto.email);
@@ -90,15 +146,11 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-
     // Jika user mendaftar via Google dan login manual
     if (user.provider === AuthProvider.GOOGLE) {
       // Minta password akun Google
       throw new UnauthorizedException('Please use Google to sign in');
     }
-
-
-
     // Hapus password dari hasil return
     const { password, ...result } = user;
     return result;
@@ -121,7 +173,6 @@ export class AuthService {
           html: htmlContent,
         });
       } catch (error) {
-        console.error(`❌ Failed to send email to ${email}:`, error);
         throw new Error(`Failed to send email to ${email}`);
       }
   }
