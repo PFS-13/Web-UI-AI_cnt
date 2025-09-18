@@ -1,7 +1,7 @@
 // src/users/users.service.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Token } from '../entity/token.entity';
 import * as bcrypt from 'bcrypt';
 
@@ -18,8 +18,9 @@ export class TokenService {
     const savedToken = await this.tokensRepository.save(newToken);
     return savedToken;
   }
-  async verify(userId: string, otp: string): Promise<boolean> {
-    const token = await this.tokensRepository.findOne({
+  async verify(userId: string, otp: string, manager?:EntityManager): Promise<boolean> {
+    const repo = manager ? manager.getRepository(Token) : this.tokensRepository;
+    const token = await repo.findOne({
       where: { user_Id: userId },
     });
 
@@ -36,12 +37,12 @@ export class TokenService {
     // cocokan OTP dengan hash di database
     const isMatch = await bcrypt.compare(String(otp), String(token.code));
     if (!isMatch) {
-      throw new UnauthorizedException('Invalid OTP HAHA');
+      throw new UnauthorizedException('Invalid OTP');
     }
     return true;
   }
 
-  async delete(userId: string): Promise<void> {
-    await this.tokensRepository.delete({ user_Id: userId });
+  async delete(userId: string, manager:EntityManager): Promise<void> {
+    await manager.getRepository(Token).delete({ user_Id: userId });
   }
 }

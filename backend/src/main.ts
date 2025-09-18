@@ -51,7 +51,7 @@ async function bootstrap() {
   SwaggerModule.setup('api-docs', app, document, {
     swaggerOptions: {
          tagsSorter: (a: string, b: string) => {
-      const order = ['Auth','Dashboard','Retros','Participant','Item','Group','Action','Email',
+      const order = ['Auth','Conversation',
       ];
       return order.indexOf(a) - order.indexOf(b);
     },

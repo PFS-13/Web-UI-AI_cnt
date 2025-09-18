@@ -10,19 +10,20 @@ import { JwtStrategy } from '../auth/jwt.strategy';
 import { TokenService } from 'src/services/token.service';
 import { TypeOrmModule } from '@nestjs/typeorm/dist/typeorm.module';
 import { Token } from 'src/entity/token.entity';
+import { GoogleStrategy } from 'src/auth/google.strategy';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET || 'default_secret',
       signOptions: { expiresIn: '60m' },
     }),
       TypeOrmModule.forFeature([Token]),
 
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy, TokenService],
+  providers: [AuthService, LocalStrategy, JwtStrategy, TokenService, GoogleStrategy],
   controllers: [AuthController],
   exports: [AuthService, TokenService],
 })

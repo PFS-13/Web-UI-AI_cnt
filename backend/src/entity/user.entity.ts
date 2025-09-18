@@ -1,22 +1,33 @@
-// src/users/user.entity.ts
-import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToMany,
+} from 'typeorm';
+import { Conversation } from './conversation.entity';
 
 export enum AuthProvider {
   MANUAL = 'manual',
   GOOGLE = 'google',
   BOTH = 'both',
 }
-
+import { UUID } from 'crypto';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: UUID;
 
   @Column({ unique: true })
   email: string;
 
   @Column({ nullable: true })
   password: string;
+
+  @Column({ nullable: true })
+  username: string;
+
+  @Column({ nullable: true })
+  image_url: string;
 
   @Column({ default: false })
   is_active: boolean;
@@ -28,7 +39,6 @@ export class User {
   })
   provider: AuthProvider;
 
-  @Column({ nullable: true })
-  google_id: string;
+
 
 }
