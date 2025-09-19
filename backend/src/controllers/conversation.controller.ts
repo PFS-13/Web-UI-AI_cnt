@@ -1,5 +1,5 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode, Delete } from '@nestjs/common';
 import { ConversationService } from '../services/conversation.service';
 import { Conversation } from '../entity/conversation.entity';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -40,8 +40,8 @@ export class ConversationController {
     }
 
     @ApiOperation({ summary: 'Delete a Conversation by ID' })
-    @Post('v1/conversations/:conversation_id/delete')
-    async deleteConversation(@Param('conversation_id') conversation_id: UUID) {
+    @Delete('v1/conversations/:conversation_id/delete')
+    async deleteConversation(@Param('conversation_id') conversation_id: UUID){
       return await this.conversationService.delete(conversation_id);
     }
 
