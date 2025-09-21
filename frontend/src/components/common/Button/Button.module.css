@@ -1,0 +1,99 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.button:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Variants */
+.primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.secondary {
+  background-color: #2a2a2a;
+  color: white;
+  border: 1px solid #3a3a3a;
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: #3a3a3a;
+}
+
+.danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.success {
+  background-color: #10b981;
+  color: white;
+}
+
+.success:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+/* Sizes */
+.small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.medium {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.large {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+}
+
+/* States */
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading {
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

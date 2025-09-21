@@ -1,0 +1,1045 @@
+.container {
+  min-height: 100vh;
+  background: #212121;
+  color: white;
+  display: flex;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  color: white;
+  cursor: pointer;
+  padding: 0.1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.logoIcon {
+  transition: all 0.3s ease;
+}
+
+.logoCheckmark {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.logoPencil {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: opacity 0.3s ease;
+}
+
+.logo:hover {
+  background: #404040;
+}
+
+.logo:hover .logoCheckmark {
+  opacity: 0;
+}
+
+.logo:hover .logoPencil {
+  opacity: 1;
+}
+
+.logo::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000000;
+  color: white;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: 0.5rem;
+  margin-left: 1rem;
+}
+
+.logo::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: -0.25rem;
+}
+
+.logo:hover::after,
+.logo:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.helpContainer {
+  position: relative;
+}
+
+.helpButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.helpButton:hover {
+  background: #374151;
+  color: white;
+}
+
+.helpDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.helpItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.helpItem:hover {
+  background: #404040;
+}
+
+.helpIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.helpText {
+  font-size: 0.875rem;
+  color: white;
+  white-space: nowrap;
+}
+
+.helpSeparator {
+  height: 1px;
+  background: #404040;
+  margin: 0.25rem 0;
+}
+
+/* Main Content */
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #212121;
+  transition: margin-left 0.3s ease;
+}
+
+.mainContentExpanded {
+  margin-left: 0;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #333;
+  background: #212121;
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chatTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+.dropdownIcon {
+  color: #9ca3af;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.dropdownIcon:hover {
+  color: white;
+}
+
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.documentButton,
+.profileButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.documentButton:hover,
+.profileButton:hover {
+  background: #333;
+  color: white;
+}
+
+.chatContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.welcomeMessage {
+  margin-bottom: 2rem;
+}
+
+.welcomeMessage h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+/* Input Form */
+.inputForm {
+  width: 100%;
+}
+
+/* Drop Zone Modal */
+.dropZoneModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  cursor: pointer;
+}
+
+.dropZoneActive {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.dropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  text-align: center;
+  cursor: default;
+}
+
+.dropZoneIcons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropIcon:nth-child(1) {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-12px);
+}
+
+.dropIcon:nth-child(2) {
+  background: #6b7280;
+  color: white;
+  transform: translateY(0px);
+}
+
+.dropIcon:nth-child(3) {
+  background: #8b5cf6;
+  color: white;
+  transform: translateY(12px);
+}
+
+.dropZoneText {
+  text-align: center;
+}
+
+.dropZoneText h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 0.5rem 0;
+}
+
+.dropZoneText p {
+  font-size: 1.125rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Image Previews */
+.imagePreviews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+  position: relative;
+  z-index: 20;
+}
+
+.imagePreview {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 0.5rem;
+  overflow: visible;
+  border: 2px solid #404040;
+  z-index: 10;
+}
+
+.imagePreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.previewImage {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.previewImage:hover {
+  opacity: 0.8;
+}
+
+.removeImageButton {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  line-height: 1;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+}
+
+.removeImageButton::before {
+  content: "×";
+  transform: translateY(-1.25px);
+}
+
+.removeImageButton:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+  z-index: 1001;
+}
+
+.removeImageButton:active {
+  transform: scale(0.95);
+  z-index: 1001;
+}
+
+.moreImagesIndicator {
+  width: 100%;
+  height: 100%;
+  background: #374151;
+  border: 2px solid #404040;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.moreImagesIndicator:hover {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+/* Image Modal */
+.imageModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  cursor: pointer;
+}
+
+.modalContent {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.modalImage {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.closeModalButton {
+  position: absolute;
+  top: 1rem;
+  right: -2rem;
+  color: white;
+  font-size: 50px;
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10001;
+}
+
+
+.prevButton,
+.nextButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 80px;
+  width: 50px;
+  height: 50px;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10001;
+}
+
+.prevButton {
+  left: -2rem;
+}
+
+.nextButton {
+  right: -2rem;
+}
+
+.prevButton:disabled,
+.nextButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+
+.imageCounter {
+  position: absolute;
+  bottom: -3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  z-index: 10001;
+}
+
+.inputContainer {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: #2d2d2d;
+  border: 1px solid #404040;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.attachButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.attachButton:hover {
+  background: #404040;
+  color: white;
+}
+
+.input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #9ca3af;
+}
+
+.inputRightButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.voiceButton,
+.waveformButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voiceButton:hover,
+.waveformButton:hover {
+  background: #404040;
+  color: white;
+}
+
+.inputButtons {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leftButtons {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.rightButtons {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.actionButton {
+  background: #2b2a2a;
+  border: 1px solid #484848;
+  color: white;
+  cursor: pointer;
+  padding: 0.5rem 0.6rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.actionButtonActive {
+  background: #1e40af !important; /* Dark blue background */
+  border-color: #1e40af !important; /* Dark blue border */
+  color: #60a5fa !important; /* Light blue text and icon */
+}
+
+.actionButtonActive:hover {
+  background: #1d4ed8 !important; /* Slightly darker blue on hover */
+}
+
+/* Disable entire input form when dropdown is open */
+.dropdownOpen {
+  pointer-events: none; /* Disable all interactions */
+}
+
+/* Re-enable dropdown container itself */
+.dropdownOpen .attachContainer {
+  pointer-events: auto; /* Re-enable dropdown interactions */
+}
+
+.actionButton::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: black;
+  color: white;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: 0.5rem;
+}
+
+.actionButton::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: -0.25rem;
+}
+
+.actionButton:hover::after,
+.actionButton:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Hide tooltip when dropdown is visible */
+.dropdownOpen .actionButton::after,
+.dropdownOpen .actionButton::before {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.voiceButton {
+  background: #414040;
+  border: 1px solid #292929;
+  color: white;
+  cursor: pointer;
+  padding: 0.5rem 0.6rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.voiceButton:hover {
+  background: #3a3b3d;
+}
+
+.sendButton {
+  background: white;
+  border: none;
+  color: black;
+  cursor: pointer;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sendButton:hover {
+  background: #e0e0e0;
+}
+
+.sendButton:active {
+  transform: scale(0.95);
+}
+
+.voiceButton::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: black;
+  color: white;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: 0.5rem;
+}
+
+.voiceButton::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+  margin-top: -0.25rem;
+}
+
+.voiceButton:hover::after,
+.voiceButton:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Study button - no tooltip */
+.actionButton:not([data-tooltip])::after,
+.actionButton:not([data-tooltip])::before {
+  display: none;
+}
+
+
+/* Attach Dropdown */
+.attachContainer {
+  position: relative;
+}
+
+.attachDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #2d2d2d;
+  border: 1px solid #484848;
+  border-radius: 0.75rem;
+  padding: 0.3rem;
+  margin-top: 0.5rem;
+  min-width: 170px;
+  z-index: 20;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #404040;
+}
+
+.dropdownIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.dropdownText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  text-align: left;
+}
+
+.dropdownTitle {
+  color: white;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.dropdownSubtitle {
+  color: white;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+/* Footer */
+.footer {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.footerText {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.footerLink {
+  color: #9ca3af;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.footerLink:hover {
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+  
+  .mainContent {
+    min-height: calc(100vh - 200px);
+  }
+  
+  .chatContent {
+    padding: 1rem;
+  }
+  
+  .welcomeMessage h2 {
+    font-size: 1.5rem;
+  }
+  
+  .inputContainer {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .input {
+    font-size: 0.9rem;
+  }
+  
+  .topBar {
+    padding: 0.75rem 1rem;
+  }
+  
+  .chatTitle {
+    font-size: 1.1rem;
+  }
+  
+  .imagePreviews {
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .imagePreview {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .removeImageButton {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+  }
+
+  .moreImagesIndicator {
+    font-size: 1rem;
+  }
+
+  .dropZoneIcons {
+    gap: 0.5rem;
+  }
+
+  .dropIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .dropIcon:nth-child(1) {
+    transform: translateY(-8px);
+  }
+
+  .dropIcon:nth-child(3) {
+    transform: translateY(8px);
+  }
+
+  .dropZoneText h3 {
+    font-size: 1.5rem;
+  }
+
+  .dropZoneText p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 2rem;
+  }
+
+  .inputButtons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .actionButton,
+  .voiceButton {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .imagePreviews {
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .imagePreview {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .removeImageButton {
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+  }
+
+  .moreImagesIndicator {
+    font-size: 0.875rem;
+  }
+
+  .dropZoneIcons {
+    gap: 0.25rem;
+  }
+
+  .dropIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .dropIcon:nth-child(1) {
+    transform: translateY(-6px);
+  }
+
+  .dropIcon:nth-child(3) {
+    transform: translateY(6px);
+  }
+
+  .dropZoneText h3 {
+    font-size: 1.25rem;
+  }
+
+  .dropZoneText p {
+    font-size: 0.875rem;
+  }
+}

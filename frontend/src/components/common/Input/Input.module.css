@@ -1,0 +1,117 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #3a3a3a;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.2s ease-in-out;
+  background-color: #2a2a2a;
+  color: white;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4a4a4a;
+  box-shadow: 0 0 0 2px rgba(74, 74, 74, 0.2);
+}
+
+.input::placeholder {
+  color: #9ca3af;
+}
+
+/* Variants */
+.default {
+  background-color: white;
+}
+
+.filled {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.outlined {
+  background-color: transparent;
+  border-width: 2px;
+}
+
+/* Sizes */
+.small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.medium {
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+.large {
+  padding: 1rem;
+  font-size: 1.125rem;
+}
+
+/* States */
+.error {
+  border-color: #ef4444;
+}
+
+.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Icons */
+.startIcon {
+  position: absolute;
+  left: 0.75rem;
+  color: #6b7280;
+  z-index: 1;
+}
+
+.endIcon {
+  position: absolute;
+  right: 0.75rem;
+  color: #6b7280;
+  z-index: 1;
+}
+
+.input:has(+ .startIcon) {
+  padding-left: 2.5rem;
+}
+
+.input:has(+ .endIcon) {
+  padding-right: 2.5rem;
+}
+
+/* Helper text */
+.helperText {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.errorText {
+  font-size: 0.75rem;
+  color: #ef4444;
+}
