@@ -3,11 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
 } from 'typeorm';
-import { Conversation } from './conversation.entity';
 
 @Entity('message')
 export class Message {
@@ -24,7 +20,7 @@ export class Message {
   created_at: Date;
 
   @Column({ type: 'boolean', nullable: true })
-  is_archived: boolean;
+  is_attach_file: boolean;
 
   @Column({ type: 'boolean', nullable: true })
   is_from_sender: boolean;
@@ -34,6 +30,4 @@ export class Message {
 
   @Column({ type: 'int', nullable: true })
   reply_from: number;
-
-
 }

@@ -10,15 +10,13 @@ export class getConversationByUserId {
   user_id: UUID;
 }
 
-
-
 export class editConversationDto {
   @ApiProperty({ example: 'conversationid123', description: 'ID User' })
   @IsUUID( )
   @IsNotEmpty()
   conversation_id: UUID;
 
-  @ApiProperty({ example: 'New Title', description: 'New title of the conversation' })
+  @ApiProperty({ example: 'New Title', description: 'Title of the conversation' })
   @IsString()
   @IsNotEmpty()
   title: string;
