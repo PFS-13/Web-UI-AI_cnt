@@ -1,0 +1,255 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-white);
+  border-right: 1px solid var(--color-gray-200);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.newButton {
+  font-size: var(--font-size-sm);
+  padding: 0.5rem 1rem;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.conversationItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  margin-bottom: 0.25rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.conversationItem:hover {
+  background: var(--color-gray-100);
+}
+
+.conversationItem.active {
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+}
+
+.conversationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.conversationTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-900);
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversationTime {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.conversationItem:hover .actions {
+  opacity: 1;
+}
+
+.actionButton {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.actionButton:hover {
+  background: var(--color-gray-200);
+}
+
+.editInput {
+  width: 100%;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-white);
+  outline: none;
+}
+
+.editInput:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--color-gray-500);
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--color-gray-200);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loadingContainer p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-gray-500);
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-700);
+  margin: 0 0 0.5rem 0;
+}
+
+.emptySubtext {
+  font-size: var(--font-size-sm);
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    border-right: none;
+    border-bottom: 1px solid var(--color-gray-200);
+    max-height: 200px;
+  }
+  
+  .header {
+    padding: 0.75rem;
+  }
+  
+  .title {
+    font-size: var(--font-size-base);
+  }
+  
+  .conversationItem {
+    padding: 0.625rem;
+  }
+  
+  .conversationTitle {
+    font-size: var(--font-size-xs);
+  }
+  
+  .conversationTime {
+    font-size: 0.625rem;
+  }
+  
+  .actions {
+    opacity: 1;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background: var(--color-gray-900);
+    border-color: var(--color-gray-700);
+  }
+  
+  .header {
+    background: var(--color-gray-800);
+    border-color: var(--color-gray-700);
+  }
+  
+  .title {
+    color: var(--color-gray-100);
+  }
+  
+  .conversationItem:hover {
+    background: var(--color-gray-800);
+  }
+  
+  .conversationItem.active {
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary);
+  }
+  
+  .conversationTitle {
+    color: var(--color-gray-100);
+  }
+  
+  .conversationTime {
+    color: var(--color-gray-400);
+  }
+  
+  .actionButton:hover {
+    background: var(--color-gray-700);
+  }
+  
+  .editInput {
+    background: var(--color-gray-800);
+    border-color: var(--color-primary);
+    color: var(--color-gray-100);
+  }
+  
+  .emptyText {
+    color: var(--color-gray-300);
+  }
+}
