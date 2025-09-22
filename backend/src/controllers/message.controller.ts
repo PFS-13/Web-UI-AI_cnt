@@ -2,8 +2,7 @@
 import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode } from '@nestjs/common';
 import { MessageService } from '../services/message.service';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { createMessageDto, getMessageDto, editMessageDto } from 'src/dtos/message.dto';
-import { UUID } from 'crypto';
+import { createMessageDto,  editMessageDto } from 'src/dtos/message.dto';
 @ApiTags('Message')
 @Controller('message')
 export class MessageController {
@@ -26,7 +25,7 @@ export class MessageController {
 
     @ApiOperation({ summary: 'Edit a Message' })
     @ApiBody({type: createMessageDto})
-    @Post('v1/messages/edit/:message_id')
+    @Patch('v1/messages/edit/:message_id')
     async editMessage(@Param('message_id') message_id: number, @Body() messageDto:editMessageDto) {
       return await this.messageService.edit(message_id,messageDto);
     }

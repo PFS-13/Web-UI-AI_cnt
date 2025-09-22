@@ -3,7 +3,7 @@ import { Injectable,NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Conversation } from '../entity/conversation.entity'; // Adjust the import path as necessary
-import { editConversationDto,createConversationDto, getConversationByUserId } from 'src/dtos/conversation.dto';
+import { createConversationDto, getConversationByUserId } from 'src/dtos/conversation.dto';
 import { UsersService } from './user.service';
 import { DataSource } from 'typeorm'; 
 import { randomUUID, UUID } from 'crypto';
@@ -74,7 +74,7 @@ export class ConversationService {
       };
     }
   }
-  async edit({conversation_id, title}: editConversationDto): Promise<{ message: string; }> {
+  async edit(conversation_id : UUID, title : string): Promise<{ message: string; }> {
     try {
       return await this.dataSource.transaction(async (manager) => {     
       const repo = manager.getRepository(Conversation);
