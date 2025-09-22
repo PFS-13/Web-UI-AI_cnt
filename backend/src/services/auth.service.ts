@@ -45,6 +45,8 @@ export class AuthService {
         username: userData.username,
         email: userData.email,
         image_url: userData.image_url,
+        provider: AuthProvider.GOOGLE,
+        is_active: true,
       });
     }
 

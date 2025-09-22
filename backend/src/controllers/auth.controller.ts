@@ -15,7 +15,7 @@ export class AuthController {
     private authService: AuthService,
     private jwtService: JwtService
   ) {}
-@Get('google')
+@Get('v1/google')
   @ApiOperation({ summary: 'Login by Google' })
   @UseGuards(GoogleAuthGuard)
   async googleAuth(@Req() req: any, @Res() res: Response, @Query('email') email: string) {
@@ -31,7 +31,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const { username, email, image_url } = req.user as {
-      google_id: string;
+      id: string;
       username: string;
       email: string;
       image_url: string;

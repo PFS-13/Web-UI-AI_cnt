@@ -50,12 +50,11 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await authAPI.checkEmail(email);
-      console.log('Email check response:', response);
       
-      if (response.provider) {
-        // User exists, redirect to appropriate login
-        console.log('User exists with provider:', response.provider);
-        // TODO: Handle different providers
+      if (response.provider == 'google') {
+        window.location.href = `http://localhost:3001/auth/v1/google?email=${encodeURIComponent(email)}`;
+      } else if(response.provider == 'manual') {
+        // Implement manual login here
       } else {
         // User doesn't exist, redirect to register
         console.log('User does not exist, redirecting to register');
@@ -71,7 +70,7 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3001/auth/google';
+    window.location.href = 'http://localhost:3001/auth/v1/google';
   };
 
   const handleMicrosoftLogin = () => {

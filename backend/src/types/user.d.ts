@@ -3,7 +3,7 @@ export {};
 declare global {
   namespace Express {
     interface User {
-      google_id: string;
+      id: string;
       username: string;
       email: string;
       image_url?: string;

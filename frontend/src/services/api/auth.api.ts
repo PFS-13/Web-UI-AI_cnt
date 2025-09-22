@@ -62,6 +62,8 @@ class AuthAPI {
     }
   }
 
+
+
   async checkEmail(email: string): Promise<CheckEmailResponse> {
     return this.request<CheckEmailResponse>('/auth/v1/check-email', {
       method: 'POST',
