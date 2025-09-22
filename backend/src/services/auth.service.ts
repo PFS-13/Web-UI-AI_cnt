@@ -3,12 +3,11 @@ import { ConflictException, Injectable, NotFoundException, UnauthorizedException
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './user.service';
 import { DataSource } from 'typeorm';
-import { User } from '../entity/user.entity';
-import { Token } from '../entity/token.entity';
+import { User, AuthProvider } from '../entity/user.entity';
+import { Token, TokenType} from '../entity/token.entity';
 import { TokenService } from './token.service';
 
 import { AuthDto,VerifyOtpDto} from '../dtos/auth.dto';
-import { AuthProvider } from '../entity/user.entity';
 import { createTransport, Transporter } from 'nodemailer';
 import * as bcrypt from 'bcrypt';
 import {UUID,randomInt}  from 'crypto';
@@ -105,11 +104,11 @@ async sendEmailVerification(id:UUID, email:string): Promise<void> {
     const hashed_code = await this.hashPassword(code);
     //! Simpan token ke DB
     const token = manager.create(Token, {
-      user_Id: id,
+      user_id: id,
       code: hashed_code,
+      token_type: TokenType.AUTH
     });
     await manager.save(token);
-    //! Kirim email (⚠️ di luar transaction, supaya tidak menahan DB)
     try {
       await this.sendEmail(email, code);
     } catch (err) {
@@ -118,22 +117,21 @@ async sendEmailVerification(id:UUID, email:string): Promise<void> {
     });
   }
 
-async register({ email, password }: AuthDto): Promise<{ message: string; user_id: string }> {
-  const new_user = await this.createUser({ email, password });
-  await this.sendEmailVerification(new_user.id, new_user.email);
-  return {
-    message: 'Registration successful. Please check your email for verification.',
-    user_id: new_user.id,
-  };
-}
+  async register({ email, password }: AuthDto): Promise<{user_id: string }> {
+    const new_user = await this.createUser({ email, password });
+    await this.sendEmailVerification(new_user.id, new_user.email);
+    return {
+      user_id: new_user.id,
+    };
+  }
 
-   async verifyOtp({ user_id, otp }: VerifyOtpDto): Promise<{message : string}> {
+   async verifyOtp({ email, code }: VerifyOtpDto): Promise<{message : string}> {
     return this.dataSource.transaction(async (manager) => {
-      const user = await this.usersService.findById(user_id, manager);
+      const user = await this.usersService.findByEmail(email, manager);
       if (!user) {
         throw new NotFoundException('Email Not found');
       }
-      await this.tokenService.verify(user.id, otp, manager);
+      await this.tokenService.verifyCode(user.id, code, manager);
       await this.usersService.activate(user.id, manager);
       await this.tokenService.delete(user.id, manager);
       return {message : 'User verified successfully'};
@@ -146,7 +144,6 @@ async register({ email, password }: AuthDto): Promise<{ message: string; user_id
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    // Jika user mendaftar via Google dan login manual
     if (user.provider === AuthProvider.GOOGLE) {
       // Minta password akun Google
       throw new UnauthorizedException('Please use Google to sign in');
@@ -175,6 +172,22 @@ async register({ email, password }: AuthDto): Promise<{ message: string; user_id
       } catch (error) {
         throw new Error(`Failed to send email to ${email}`);
       }
+  }
+
+  async resendEmail(email: string) {
+    return await this.dataSource.transaction(async (manager) => {
+    const user = await this.usersService.findByEmail(email, manager)
+    if (!user){
+      throw new NotFoundException("Email not found")
+    }
+    const token = await this.tokenService.findTokenVerificationByUserId(user.id,manager)
+    if (!token){
+      this.sendEmailVerification(user.id, user.email)
+    } else {
+      this.tokenService.delete(user.id,manager)
+      this.sendEmailVerification(user.id,user.email)
+    }
+  });
   }
 
   private generateVerificationCodeEmailHTML(code: string): string {

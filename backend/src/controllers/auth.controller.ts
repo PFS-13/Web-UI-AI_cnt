@@ -70,7 +70,8 @@ export class AuthController {
     type: CheckEmailResponseDto,
   })
   async checkEmail(@Body('email') email: string) {
-    return await this.authService.checkEmail(email);
+    const provider = await this.authService.checkEmail(email);
+    return { provider };
   }
 
   // Melakukan registrasi user
@@ -97,5 +98,33 @@ export class AuthController {
   async verifyOtp(@Body() verifyOtp: VerifyOtpDto) {
     return await this.authService.verifyOtp(verifyOtp);
   }
+
+  
+  @Post('v1/resend-email')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check email that user inputed' })
+    @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          example: 'user@example.com',
+        },
+      },
+      required: ['email'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Email check result (provider jika ada, null jika tidak)',
+    type: CheckEmailResponseDto,
+  })
+  async resendEmail(@Body('email') email: string) {
+    const resendEmail =  await this.authService.resendEmail(email);
+    return {resendEmail}
+  }
+
+  
 
 }

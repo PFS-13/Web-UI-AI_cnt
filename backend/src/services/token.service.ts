@@ -2,7 +2,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { Token } from '../entity/token.entity';
+import { Token, TokenType } from '../entity/token.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -18,10 +18,14 @@ export class TokenService {
     const savedToken = await this.tokensRepository.save(newToken);
     return savedToken;
   }
-  async verify(userId: string, otp: string, manager?:EntityManager): Promise<boolean> {
+
+  async findTokenVerificationByUserId(user_id: string, manager: EntityManager): Promise<Token | null> {
+    return manager.getRepository(Token).findOne({ where: { user_id, token_type:TokenType.AUTH} });
+  }
+  async verifyCode(user_id: string, otp: string, manager?:EntityManager): Promise<boolean> {
     const repo = manager ? manager.getRepository(Token) : this.tokensRepository;
     const token = await repo.findOne({
-      where: { user_Id: userId },
+      where: { user_id },
     });
 
     if (!token) {
@@ -30,10 +34,10 @@ export class TokenService {
 
     // cek apakah sudah expired
     if (token.expired_date < new Date()) {
-      await this.tokensRepository.delete({ user_Id: userId });
+      await this.tokensRepository.delete({ user_id });
       throw new UnauthorizedException('Token expired');
     }
-
+    
     // cocokan OTP dengan hash di database
     const isMatch = await bcrypt.compare(String(otp), String(token.code));
     if (!isMatch) {
@@ -42,7 +46,7 @@ export class TokenService {
     return true;
   }
 
-  async delete(userId: string, manager:EntityManager): Promise<void> {
-    await manager.getRepository(Token).delete({ user_Id: userId });
+  async delete(user_id: string, manager:EntityManager): Promise<void> {
+    await manager.getRepository(Token).delete({ user_id });
   }
 }

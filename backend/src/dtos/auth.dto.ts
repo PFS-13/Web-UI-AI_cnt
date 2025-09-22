@@ -41,13 +41,13 @@ export class AuthDto {
 }
 
 export class VerifyOtpDto {
-  @ApiProperty({ example: '123456', description: 'The OTP code sent to the user email' })
+  @ApiProperty({ example: '123456', description: 'The Code sent to the user email' })
   @IsString()
   @IsNotEmpty()
-  otp: string;
+  code: string;
 
-  @ApiProperty({ example: 'userId123', description: 'ID of the user' })
-  @IsUUID()
+  @ApiProperty({ example: 'userId123', description: 'Email of the user' })
+  @IsString()
   @IsNotEmpty()
-  user_id: UUID;
+  email: string;
 }

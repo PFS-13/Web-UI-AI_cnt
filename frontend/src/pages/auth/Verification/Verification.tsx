@@ -4,6 +4,7 @@ import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const Verification: React.FC = () => {
   const [code, setCode] = useState('');
@@ -11,16 +12,19 @@ const Verification: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [email, setEmail] = useState('');
+
   const codeInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { } = useAuth();
 
-  // Load email from localStorage on component mount
+  // Load email from sessionStorage on component mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('registerEmail');
-    console.log('Loading email from localStorage:', savedEmail);
-    if (savedEmail) {
-      setEmail(savedEmail);
+    const email = sessionStorage.getItem('email');
+    console.log('Loading email from sessionStorage:', email);
+    if (email) {
+      setEmail(email);
+    } else {
+      navigate('/register')
     }
   }, []);
 
@@ -46,26 +50,29 @@ const Verification: React.FC = () => {
       setCodeError('Verification code must be exactly 6 characters.');
       return;
     }
-
     setIsLoading(true);
-
     try {
-      // Simulasi verifikasi code
-      console.log('Verifying code:', code);
-      // Redirect ke Dashboard setelah verifikasi berhasil
+      await authAPI.verifyOtp({email, code})
       navigate('/dashboard');
     } catch (err) {
       setCodeError('Invalid verification code. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } finally{
+      setIsLoading(false)
     }
   };
 
-  const handleResendEmail = () => {
-    console.log('Resending verification email to:', email);
-    // Implementasi resend email logic
+  const handleResendEmail = async () => {
+    try {
+      await authAPI.resendEmail(email);
+    } catch (err) {
+      console.error(err);
+    } finally {
+    }
   };
 
+
+  
+  
   return (
     <div className={styles.container}>
       <AuthHeader />

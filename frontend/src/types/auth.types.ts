@@ -38,8 +38,8 @@ export interface CheckEmailResponse {
 }
 
 export interface VerifyOtpRequest {
-  user_id: string;
-  otp: string;
+  email: string;
+  code: string;
 }
 
 export interface VerifyOtpResponse {

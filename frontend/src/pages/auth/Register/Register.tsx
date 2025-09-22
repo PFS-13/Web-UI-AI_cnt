@@ -4,6 +4,7 @@ import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -14,7 +15,7 @@ const Register: React.FC = () => {
   const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { register, isLoading, clearError } = useAuth();
+  const {  isLoading, clearError } = useAuth();
 
   // Load email from localStorage on component mount
   useEffect(() => {
@@ -67,11 +68,13 @@ const Register: React.FC = () => {
     }
 
     try {
-      await register({ email, password });
-      // Redirect ke halaman verifikasi setelah registrasi berhasil
+      await authAPI.register({ email, password });
+      sessionStorage.setItem('email', email);
       navigate('/verification');
     } catch (error) {
-      // Handle error if needed
+      console.error('Registration failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert('Registrasi gagal: ' + errorMessage);
     }
   };
 
