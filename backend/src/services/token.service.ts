@@ -19,13 +19,13 @@ export class TokenService {
     return savedToken;
   }
 
-  async findTokenVerificationByUserId(user_id: string, manager: EntityManager): Promise<Token | null> {
-    return manager.getRepository(Token).findOne({ where: { user_id, token_type:TokenType.AUTH} });
+  async findToken(user_id: string, token_type: TokenType, manager: EntityManager): Promise<Token | null> {
+    return manager.getRepository(Token).findOne({ where: { user_id, token_type } });
   }
-  async verifyCode(user_id: string, otp: string, manager?:EntityManager): Promise<boolean> {
+  async verifyCode(user_id: string, token_type: TokenType, otp: string, manager?:EntityManager): Promise<boolean> {
     const repo = manager ? manager.getRepository(Token) : this.tokensRepository;
     const token = await repo.findOne({
-      where: { user_id },
+      where: { user_id, token_type },
     });
 
     if (!token) {
@@ -35,7 +35,7 @@ export class TokenService {
     // cek apakah sudah expired
     if (token.expired_date < new Date()) {
       await this.tokensRepository.delete({ user_id });
-      throw new UnauthorizedException('Token expired');
+      throw new UnauthorizedException('Token expired, please resend email for new OTP');
     }
     
     // cocokan OTP dengan hash di database
@@ -46,7 +46,7 @@ export class TokenService {
     return true;
   }
 
-  async delete(user_id: string, manager:EntityManager): Promise<void> {
-    await manager.getRepository(Token).delete({ user_id });
+  async delete(user_id: string, token_type: TokenType, manager: EntityManager): Promise<void> {
+    await manager.getRepository(Token).delete({ user_id, token_type });
   }
 }

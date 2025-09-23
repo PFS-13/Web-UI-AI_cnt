@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
@@ -16,12 +16,14 @@ const Register: React.FC = () => {
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const {  isLoading, clearError } = useAuth();
-
-  // Load email from localStorage on component mount
+  const location = useLocation();
+  // Load email from state on component mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('registerEmail');
-    if (savedEmail) {
-      setEmail(savedEmail);
+    const email_user = location.state.email || {};
+    if (email_user) {
+      setEmail(email_user);
+    } else {
+      navigate('/login');
     }
   }, []);
 
@@ -34,8 +36,6 @@ const Register: React.FC = () => {
 
 
   const handleEditEmail = () => {
-    // Kembali ke halaman Login
-    console.log('Navigating to login page...');
     navigate('/', { replace: true });
   };
 
@@ -69,8 +69,7 @@ const Register: React.FC = () => {
 
     try {
       await authAPI.register({ email, password });
-      sessionStorage.setItem('email', email);
-      navigate('/verification');
+      navigate('/verification', { state: { email } });
     } catch (error) {
       console.error('Registration failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

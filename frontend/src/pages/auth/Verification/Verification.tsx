@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
@@ -16,15 +16,13 @@ const Verification: React.FC = () => {
   const codeInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { } = useAuth();
-
-  // Load email from sessionStorage on component mount
+  const location = useLocation();
   useEffect(() => {
-    const email = sessionStorage.getItem('email');
-    console.log('Loading email from sessionStorage:', email);
+    const email = location.state.email || {};
     if (email) {
       setEmail(email);
     } else {
-      navigate('/register')
+      navigate('/login')
     }
   }, []);
 
@@ -54,8 +52,8 @@ const Verification: React.FC = () => {
     try {
       await authAPI.verifyOtp({email, code})
       navigate('/dashboard');
-    } catch (err) {
-      setCodeError('Invalid verification code. Please try again.');
+    } catch (err : any) {
+      setCodeError(JSON.parse(err.message).message || 'Verification failed. Please try again.');
     } finally{
       setIsLoading(false)
     }
@@ -64,8 +62,8 @@ const Verification: React.FC = () => {
   const handleResendEmail = async () => {
     try {
       await authAPI.resendEmail(email);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error(err.message);
     } finally {
     }
   };

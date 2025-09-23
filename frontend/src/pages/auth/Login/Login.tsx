@@ -15,15 +15,6 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { } = useAuth();
 
-  // Load email from localStorage on component mount
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('registerEmail');
-    console.log('Loading email from localStorage:', savedEmail);
-    if (savedEmail) {
-      setEmail(savedEmail);
-    }
-  }, []);
-
   // Auto focus ketika error muncul
   useEffect(() => {
     if (emailError && emailInputRef.current) {
@@ -41,7 +32,6 @@ const Login: React.FC = () => {
       return;
     }
 
-    // Validasi format email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setEmailError('Email is not valid.');
@@ -50,16 +40,13 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await authAPI.checkEmail(email);
-      
+      console.log('Check email response:', response);
       if (response.provider == 'google') {
         window.location.href = `http://localhost:3001/auth/v1/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
         // Implement manual login here
       } else {
-        // User doesn't exist, redirect to register
-        console.log('User does not exist, redirecting to register');
-        localStorage.setItem('registerEmail', email);
-        navigate('/register');
+        navigate('/register', { state: { email } });
       }
     } catch (error) {
       console.error('Error checking email:', error);

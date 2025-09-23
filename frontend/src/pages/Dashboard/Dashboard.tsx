@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import styles from './Dashboard.module.css';
+import { authAPI } from '../../services';
 
 const Dashboard: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -21,15 +22,31 @@ const Dashboard: React.FC = () => {
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const helpDropdownRef = React.useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
 
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const user = await authAPI.getMe(); // ✅ tunggu Promise
+        if (!user) {
+          navigate("/login");
+        } else {
+          console.log("Authenticated user:", user);
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        navigate("/login");
+      }
+    };
+
+    checkUser();
+  }, [navigate]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || uploadedImages.length > 0) {
-      // Redirect to chat page with the input and images
       navigate('/chat', { 
         state: { 
           initialMessage: inputValue,
@@ -39,6 +56,7 @@ const Dashboard: React.FC = () => {
       });
     }
   };
+  
 
   const handleAttachClick = () => {
     console.log('Attach button clicked, current state:', isAttachDropdownOpen);
@@ -72,9 +90,7 @@ const Dashboard: React.FC = () => {
         alert('File size must be less than 5MB');
         return;
       }
-
       validFiles.push(file);
-      
       // Buat preview URL
       const previewPromise = new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -83,7 +99,6 @@ const Dashboard: React.FC = () => {
         };
         reader.readAsDataURL(file);
       });
-      
       previewPromises.push(previewPromise);
     });
 

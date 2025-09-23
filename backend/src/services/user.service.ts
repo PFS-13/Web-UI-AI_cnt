@@ -21,6 +21,12 @@ export class UsersService {
       const repo = manager ? manager.getRepository(User) : this.usersRepository;
       return repo.findOne({ where: { id } });  
     }
+
+  async update(id: UUID, user: Partial<User>, manager?: EntityManager): Promise<User | null> {
+    const repo = manager ? manager.getRepository(User) : this.usersRepository;
+    await repo.update(id, user);
+    return repo.findOne({ where: { id } });
+  }
   
   async activate(id: UUID, manager?: EntityManager): Promise<User | null> {
     const repo = manager ? manager.getRepository(User) : this.usersRepository;
