@@ -5,7 +5,7 @@ import { createMessageDto } from '../dtos/message.dto';
 import { Message } from '../entity/message.entity';
 
 @Injectable()
-export class MessageService {
+export class ChatService {
 
   // Config
   private readonly modelName = 'dummy-gemini-v1';

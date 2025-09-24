@@ -114,8 +114,10 @@ async createUser({ email, password }: AuthDto): Promise<User> {
         throw new NotFoundException('Email Not found');
       }
       await this.tokenService.verifyCode(user.id, token_type, code, manager);
-      await this.usersService.activate(user.id, manager);
       await this.tokenService.delete(user.id, token_type, manager);
+      if (token_type === TokenType.AUTH) {
+        await this.usersService.activate(user.id, manager);
+      }
     });
   }
 
@@ -164,7 +166,6 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     await manager.save(user);
   });
 }
-
 
   async createTokenSendEmail(id:UUID, token_type: TokenType, email:string): Promise<void> {
     //! Generate OTP
@@ -223,7 +224,21 @@ async createUser({ email, password }: AuthDto): Promise<User> {
   });
   }
 
-  private generateEmailTemplate({
+  async changeUsername(user_id: UUID, new_username: string): Promise<User> {
+    return await this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, { where: { id: user_id } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      user.username = new_username;
+      return await manager.save(user);
+    });
+  }
+
+
+
+// * Email HTML Templates
+private generateEmailTemplate({
   title,
   subtitle,
   code,

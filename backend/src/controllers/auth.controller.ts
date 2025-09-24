@@ -19,7 +19,7 @@ export class AuthController {
     private jwtService: JwtService
   ) {}
 
-@Get('v1/google')
+@Get('google')
   @ApiOperation({ summary: 'Login by Google' })
   @UseGuards(GoogleAuthGuard)
   async googleAuth(@Req() req: any, @Res() res: Response, @Query('email') email: string) {
@@ -43,7 +43,7 @@ export class AuthController {
     const { token } = await this.authService.handleGoogleLogin({ username, email, image_url });
     const frontendUrl = process.env.FRONTEND_URL;
     // TODO: change secure to true in production
-    res.cookie('token', token, {
+    res.cookie('Authentication', token, {
       httpOnly: true, 
       secure: false,
       sameSite: 'lax',
@@ -113,7 +113,6 @@ export class AuthController {
   async verifyOtp(@Body() verifyOtp: VerifyOtpDto) {
     return await this.authService.verifyOtp(verifyOtp);
   }
-
   
   // Pengiriman kembali email
   @Post('v1/resend-email')
@@ -131,7 +130,7 @@ export class AuthController {
       required: ['email'],
     },
   })
-  async resendEmailVerification(@Body('email') email: string, @Body('token_type') token_type: TokenType) {
+  async resendEmail(@Body('email') email: string, @Body('token_type') token_type: TokenType) {
     const resendEmail =  await this.authService.resendEmail(email, token_type);
     return {resendEmail}
   }
