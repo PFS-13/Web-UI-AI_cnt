@@ -1,6 +1,6 @@
 // src/App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HomePage, Login, Register, Verification, AuthCallback, Dashboard, ChatPage, ConversationHistory } from './pages';
 import styles from './App.module.css';
 import LoginTest from './LoginTest';

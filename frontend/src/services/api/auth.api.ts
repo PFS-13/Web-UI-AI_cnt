@@ -3,35 +3,49 @@ import type {
   AuthResponse, 
   CheckEmailResponse, 
   VerifyOtpRequest, 
-  VerifyOtpResponse 
+  VerifyOtpResponse, 
+  TokenType
 } from '../../types/auth.types';
-
+import type { User } from '../../types/auth.types';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 
 class AuthAPI {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const config: RequestInit = {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  };
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config: RequestInit = {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
 
-  const response = await fetch(url, config);
+    const response = await fetch(url, config);
 
-  // safety: handle non-json or 204
-  if (response.status === 204) return null as any;
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(text || response.statusText);
+    // handle 204 (No Content)
+    if (response.status === 204) return null as any;
+
+    const text = await response.text();
+    let data: any = null;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { message: text };
+    }
+
+    if (!response.ok) {
+      // balikin error dalam bentuk json
+      throw data;
+    }
+
+    return data as T;
   }
-  return text ? JSON.parse(text) : (null as any);
-}
 
-  async getMe() {
+
+  async getMe(): Promise<User> {
     return this.request('/auth/v1/me', { method: 'GET' });
   }
 
@@ -55,10 +69,10 @@ class AuthAPI {
     });
   }
 
-  async resendEmail(email : string): Promise<VerifyOtpResponse> {
+  async resendEmail(email : string, token_type: TokenType): Promise<VerifyOtpResponse> {
     return this.request<VerifyOtpResponse>('/auth/v1/resend-email', {
       method: 'POST',
-      body: JSON.stringify({email}),
+      body: JSON.stringify({email, token_type}),
     });
   }
 

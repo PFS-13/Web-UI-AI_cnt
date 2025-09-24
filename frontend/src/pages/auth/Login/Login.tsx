@@ -42,7 +42,7 @@ const Login: React.FC = () => {
       const response = await authAPI.checkEmail(email);
       console.log('Check email response:', response);
       if (response.provider == 'google') {
-        window.location.href = `http://localhost:3001/auth/v1/google?email=${encodeURIComponent(email)}`;
+        window.location.href = `http://localhost:3001/auth/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
         // Implement manual login here
       } else {
@@ -57,7 +57,7 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3001/auth/v1/google';
+    window.location.href = 'http://localhost:3001/auth/google';
   };
 
   const handleMicrosoftLogin = () => {

@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     const checkAuth = async () => {
       try {
         const currentUser = await authAPI.getMe();
-        const ok = !!currentUser && Object.keys(currentUser).length > 0;
+        const ok = !!currentUser && Object.keys(currentUser).length > 0 && currentUser.is_active;
         if (mounted) setIsAuthenticated(ok);
       } catch (err) {
         if (mounted) setIsAuthenticated(false);

@@ -5,7 +5,6 @@ import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
 import { authAPI } from '../../../services';
-
 const Verification: React.FC = () => {
   const [code, setCode] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -50,10 +49,10 @@ const Verification: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      await authAPI.verifyOtp({email, code})
+      await authAPI.verifyOtp({email, code, token_type: "auth"});
       navigate('/dashboard');
     } catch (err : any) {
-      setCodeError(JSON.parse(err.message).message || 'Verification failed. Please try again.');
+      setCodeError(err.message || 'Failed to verify code. Please try again.');
     } finally{
       setIsLoading(false)
     }
@@ -61,8 +60,8 @@ const Verification: React.FC = () => {
 
   const handleResendEmail = async () => {
     try {
-      await authAPI.resendEmail(email);
-    } catch (err: any) {
+      await authAPI.resendEmail(email, "auth");
+    } catch (err: any) { 
       console.error(err.message);
     } finally {
     }

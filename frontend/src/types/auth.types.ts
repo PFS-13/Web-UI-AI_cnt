@@ -41,8 +41,16 @@ export interface CheckEmailResponse {
 export interface VerifyOtpRequest {
   email: string;
   code: string;
+  token_type: TokenType;
 }
 
 export interface VerifyOtpResponse {
   message: string;
 }
+
+export const TokenType = {
+  AUTH: "auth",
+  FORGOT_PASSWORD: "forgot_password",
+} as const;
+
+export type TokenType = typeof TokenType[keyof typeof TokenType];

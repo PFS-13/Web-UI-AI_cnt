@@ -52,9 +52,9 @@ export class createMessageDto {
       example: 'conv123ID', 
       description: 'ID of the conversations' 
     })
-    @IsUUID()
+    @IsString()
     @IsNotEmpty() 
-    conversation_id: UUID;
+    conversation_id: string;
   
       @ApiProperty({ 
         example: 'Give me example of .... ', 

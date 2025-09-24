@@ -1,0 +1,64 @@
+import type { 
+Message, CreateMessagePayload
+} from '../../types/message.types';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+
+class MessageApi {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config: RequestInit = {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    const response = await fetch(url, config);
+
+    // handle 204 (No Content)
+    if (response.status === 204) return null as any;
+
+    const text = await response.text();
+    let data: any = null;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { message: text };
+    }
+
+    if (!response.ok) {
+      // balikin error dalam bentuk json
+      throw data;
+    }
+
+    return data as T;
+  }
+
+
+  async sendMessage(message : CreateMessagePayload): Promise<Message> {
+    return this.request('/message/v1/messages/create', {
+      method: 'POST',
+      body: JSON.stringify(message),
+    });
+  }
+
+  // async checkEmail(email: string): Promise<CheckEmailResponse> {
+  //   return this.request<CheckEmailResponse>(`/auth/v1/check-email?email=${encodeURIComponent(email)}`, {
+  //     method: 'GET',
+  //   });
+  // }
+
+  // async register(credentials: RegisterCredentials): Promise<AuthResponse> {
+  //   return this.request<AuthResponse>('/auth/v1/register', {
+  //     method: 'POST',
+  //     body: JSON.stringify(credentials),
+  //   });
+  // }
+
+}
+
+export const messageAPI = new MessageApi();
