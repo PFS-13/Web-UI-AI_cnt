@@ -74,6 +74,7 @@ export class ConversationService {
       };
     }
   }
+  
   async edit(conversation_id : UUID, title : string): Promise<{ message: string; }> {
     try {
       return await this.dataSource.transaction(async (manager) => {     

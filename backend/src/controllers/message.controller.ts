@@ -3,17 +3,18 @@ import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode } f
 import { MessageService } from '../services/message.service';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createMessageDto,  editMessageDto } from 'src/dtos/message.dto';
+import { UUID } from 'crypto';
 @ApiTags('Message')
 @Controller('message')
 export class MessageController {
   constructor(
     private messageService: MessageService,
   ) {}
-    // @ApiOperation({ summary: 'Get Messages by Conversation ID' })
-    // @Get('v1/conversations/:conversation_id')
-    // async getMessageByConversationId(@Param('conversation_id') conversation_id: string) {
-    //     return await this.messageService.findByConversationId(conversation_id);
-    // }
+    @ApiOperation({ summary: 'Get Messages by Conversation ID' })
+    @Get('v1/conversations/:conversation_id')
+    async getMessageByConversationId(@Param('conversation_id') conversation_id: UUID) {
+        return await this.messageService.findByConversationId(conversation_id);
+    }
     
     @ApiOperation({ summary: 'Create a message' })
     @ApiBody({type: createMessageDto})

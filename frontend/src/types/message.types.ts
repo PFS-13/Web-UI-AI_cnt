@@ -4,8 +4,8 @@ export interface Message {
   content: string;
   is_from_sender: boolean;
   is_attach_file: boolean;
-  edited_from?: number;
-  reply_from?: number;
+  edited_from_message_id?: number;
+  parent_message_id?: number;
   created_at: Date;
 }
 

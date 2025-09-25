@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsNotEmpty, IsUUID, IsString,  IsBoolean, IsOptional, IsNumber} from 'class-validator';
 import { UUID } from 'crypto';
 
@@ -24,7 +25,7 @@ export class createMessageDto {
     @IsString()
     @IsNotEmpty() 
     content: string;
-  
+
     @ApiProperty({ description: 'True if user the one who send the message. False if the message is AI Response', example : true })
     @IsBoolean()
     @IsNotEmpty() 
@@ -38,12 +39,12 @@ export class createMessageDto {
     @ApiProperty({ description: 'Message was edited from other meessage', example : 'conve123ID' })
     @IsNumber()
     @IsOptional() 
-    edited_from?: number; 
+    edited_from_message_id?: number; 
 
     @ApiProperty({ description: 'Message was reply to other message', example : 'conve123ID' })
     @IsNumber()
     @IsOptional() 
-    reply_from?: number; 
+    parent_message_id?: number; 
   }
 
   export class editMessageDto {

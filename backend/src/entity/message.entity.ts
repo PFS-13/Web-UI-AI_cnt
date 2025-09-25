@@ -12,8 +12,8 @@ export class Message {
   id: number;
 
   @Column({ type: 'uuid' })
-  conversation_id: string;
-
+  conversation_id: UUID;
+  
   @Column({ type: 'text' })
   content: string;
 
@@ -27,8 +27,8 @@ export class Message {
   is_from_sender: boolean;
 
   @Column({ type: 'int', nullable: true })
-  edited_from: number;
+  edited_from_message_id: number;
 
   @Column({ type: 'int', nullable: true })
-  reply_from: number;
+  parent_message_id: number;
 }
