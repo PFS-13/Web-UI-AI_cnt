@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsNotEmpty, IsUUID, IsString,  IsBoolean, IsOptional, IsNumber} from 'class-validator';
 import { UUID } from 'crypto';
 
@@ -20,35 +21,30 @@ export class createMessageDto {
   @IsNotEmpty() 
   conversation_id: UUID;
 
-    @ApiProperty({ 
-      example: 'Give me example of .... ', 
-      description: 'Message the user / AI send' 
-    })
+    @ApiProperty({ example: 'Give me example of .... ', description: 'Message the user / AI send' })
     @IsString()
     @IsNotEmpty() 
     content: string;
-  
-    @ApiProperty({ 
-      description: 'True if user the one who send the message. False if the message is AI Response', example : true 
-    })
+
+    @ApiProperty({ description: 'True if user the one who send the message. False if the message is AI Response', example : true })
     @IsBoolean()
     @IsNotEmpty() 
     is_from_sender: boolean; 
   
-    @ApiProperty({ 
-      description: 'True if the message also attach file. False if not', example : false 
-    })
+    @ApiProperty({ description: 'True if the message also attach file. False if not', example : false })
     @IsBoolean()
     @IsNotEmpty() 
     is_attach_file: boolean; 
 
-    @ApiProperty({ 
-      description: 'Message was edited from other meessage', example : 'conve123ID' 
-    })
+    @ApiProperty({ description: 'Message was edited from other meessage', example : 'conve123ID' })
     @IsNumber()
     @IsOptional() 
-    edited_from?: number; 
+    edited_from_message_id?: number; 
 
+    @ApiProperty({ description: 'Message was reply to other message', example : 'conve123ID' })
+    @IsNumber()
+    @IsOptional() 
+    parent_message_id?: number; 
   }
 
   export class editMessageDto {
@@ -57,9 +53,9 @@ export class createMessageDto {
       example: 'conv123ID', 
       description: 'ID of the conversations' 
     })
-    @IsUUID()
+    @IsString()
     @IsNotEmpty() 
-    conversation_id: UUID;
+    conversation_id: string;
   
       @ApiProperty({ 
         example: 'Give me example of .... ', 

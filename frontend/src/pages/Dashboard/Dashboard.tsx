@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar/Sidebar';
 import styles from './Dashboard.module.css';
 
@@ -8,6 +9,7 @@ interface ChatMessage {
   isUser: boolean;
   timestamp: Date;
 }
+import { authAPI } from '../../services';
 
 const Dashboard: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -87,6 +89,7 @@ const Dashboard: React.FC = () => {
       setImagePreviews([]);
     }
   };
+  
 
   const handleAttachClick = () => {
     console.log('Attach button clicked, current state:', isAttachDropdownOpen);
@@ -151,9 +154,7 @@ const Dashboard: React.FC = () => {
         alert('File size must be less than 5MB');
         return;
       }
-
       validFiles.push(file);
-      
       // Buat preview URL
       const previewPromise = new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -162,7 +163,6 @@ const Dashboard: React.FC = () => {
         };
         reader.readAsDataURL(file);
       });
-      
       previewPromises.push(previewPromise);
     });
 

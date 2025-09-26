@@ -11,14 +11,20 @@ import { TokenService } from 'src/services/token.service';
 import { TypeOrmModule } from '@nestjs/typeorm/dist/typeorm.module';
 import { Token } from 'src/entity/token.entity';
 import { GoogleStrategy } from 'src/auth/google.strategy';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'default_secret',
-      signOptions: { expiresIn: '60m' },
+    ConfigModule,
+     JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET', ''), // ✅ tidak undefined
+        signOptions: { expiresIn: '60m' },
+      }),
     }),
       TypeOrmModule.forFeature([Token]),
 

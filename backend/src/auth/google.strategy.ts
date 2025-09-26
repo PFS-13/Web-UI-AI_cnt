@@ -2,6 +2,7 @@
 import { PassportStrategy } from '@nestjs/passport'; 
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { Request } from 'express';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -17,22 +18,22 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
+    req: Request,
     accessToken: string,
     refreshToken: string,
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
-    const { id, displayName, emails, photos } = profile;
+    const { sub, displayName, emails, photos } = profile;
     const email = emails?.[0]?.value;
     const username = displayName;
     const image_url = photos?.[0]?.value || null;
-    const google_id = id; // <-- tambahkan google_id
 
     if (!email) {
       return done(new UnauthorizedException('Email not found'), false);
     }
 
     // Pass all user info ke controller
-    done(null, { google_id, username, email, image_url });
+    done(null, { id: sub, username, email, image_url });
   }
 }

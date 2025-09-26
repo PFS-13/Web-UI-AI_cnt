@@ -2,9 +2,7 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  OneToMany,
 } from 'typeorm';
-import { Conversation } from './conversation.entity';
 
 export enum AuthProvider {
   MANUAL = 'manual',

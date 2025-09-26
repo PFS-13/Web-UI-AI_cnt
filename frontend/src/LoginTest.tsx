@@ -2,36 +2,36 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-
-const Login: React.FC = () => {
+import { useNavigate } from 'react-router-dom';
+const LoginTest: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
+  const navigate = useNavigate();
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
 
-    window.location.href = `http://localhost:3001/auth/google?email=${encodeURIComponent(email)}`;
+    try {
+      const response = await axios.post(
+      'http://localhost:3001/auth/v1/login',
+      { email, password },
+      { withCredentials: true }
+    );
 
-    // try {
-    //   const response = await axios.post('http://localhost:3001/auth/login', {
-    //     email,
-    //     password,
-    //   });
+    if (response.data.message === 'Logged in') {
+      navigate('/dashboard');
+    }
 
-    //   if (response.data.access_token) {
-    //     localStorage.setItem('token', response.data.access_token);
-    //     setMessage('Login berhasil! Token: ' + response.data.access_token);
-    //   }
-    // } catch (error: any) {
-    //   setMessage(error.response?.data?.message || 'Login gagal');
-    // } finally {
-    //   setLoading(false);
-    // }
+
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || 'Login gagal');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -104,7 +104,7 @@ const Login: React.FC = () => {
           />
         </div>
 
-        {/* <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <label
             style={{
               display: 'block',
@@ -127,7 +127,7 @@ const Login: React.FC = () => {
               boxSizing: 'border-box',
             }}
           />
-        </div> */}
+        </div>
 
         <button
           type="submit"
@@ -184,4 +184,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default LoginTest;

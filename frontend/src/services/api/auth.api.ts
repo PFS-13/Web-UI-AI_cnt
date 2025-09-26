@@ -1,60 +1,57 @@
-import type { ApiResponse, ApiError } from '../../types';
 import type { 
-  LoginCredentials, 
   RegisterCredentials, 
   AuthResponse, 
   CheckEmailResponse, 
   VerifyOtpRequest, 
-  VerifyOtpResponse 
+  VerifyOtpResponse, 
+  TokenType
 } from '../../types/auth.types';
+import type { User } from '../../types/auth.types';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 class AuthAPI {
-  private async request<T>(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<T> {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const token = sessionStorage.getItem('auth_token');
-    
     const config: RequestInit = {
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
     };
 
+    const response = await fetch(url, config);
+
+    // handle 204 (No Content)
+    if (response.status === 204) return null as any;
+
+    const text = await response.text();
+    let data: any = null;
+
     try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new ApiError(
-          errorData.message || `HTTP error! status: ${response.status}`,
-          response.status,
-          errorData
-        );
-      }
-      
-      return await response.json();
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        error instanceof Error ? error.message : 'Network error',
-        0
-      );
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { message: text };
     }
+
+    if (!response.ok) {
+      // balikin error dalam bentuk json
+      throw data;
+    }
+
+    return data as T;
+  }
+
+
+  async getMe(): Promise<User> {
+    return this.request('/auth/v1/me', { method: 'GET' });
   }
 
   async checkEmail(email: string): Promise<CheckEmailResponse> {
-    return this.request<CheckEmailResponse>('/auth/v1/check-email', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
+    return this.request<CheckEmailResponse>(`/auth/v1/check-email?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
     });
   }
 
@@ -72,7 +69,21 @@ class AuthAPI {
     });
   }
 
-  async getGoogleAuthUrl(email?: string): string {
+  async resendEmail(email : string, token_type: TokenType): Promise<VerifyOtpResponse> {
+    return this.request<VerifyOtpResponse>('/auth/v1/resend-email', {
+      method: 'POST',
+      body: JSON.stringify({email, token_type}),
+    });
+  }
+
+  async changePassword(user_id: string, new_password: string): Promise<VerifyOtpResponse> {
+    return this.request<VerifyOtpResponse>(`/auth/v1/users/${user_id}/change-password`, {
+      method: 'PATCH',
+      body: JSON.stringify({new_password}),
+    });
+  }
+
+  async getGoogleAuthUrl(email?: string): Promise<String> {
     const baseUrl = `${API_BASE_URL}/auth/google`;
     return email ? `${baseUrl}?email=${encodeURIComponent(email)}` : baseUrl;
   }

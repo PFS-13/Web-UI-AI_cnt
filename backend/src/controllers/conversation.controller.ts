@@ -2,8 +2,8 @@
 import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode, Delete } from '@nestjs/common';
 import { ConversationService } from '../services/conversation.service';
 import { Conversation } from '../entity/conversation.entity';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { createConversationDto,editConversationDto,getConversationByUserId} from 'src/dtos/conversation.dto';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { createConversationDto,getConversationByUserId} from 'src/dtos/conversation.dto';
 import { UUID } from 'crypto';
 @ApiTags('Conversation')
 @Controller('conversation')
@@ -12,7 +12,7 @@ export class ConversationController {
     private conversationService: ConversationService,
   ) {}
     @ApiOperation({ summary: 'Get Conversations by User ID' })
-    @Get('v1/conversations/user/:user_id')
+    @Get('v1/user/:user_id')
     async getConversationByUserId(@Param('user_id') user_id: getConversationByUserId) {
       return await this.conversationService.findAllByUserId(user_id);
     }
@@ -33,10 +33,9 @@ export class ConversationController {
     }
 
     @ApiOperation({ summary: 'Edit title of Conversation' })
-    @ApiBody({type: editConversationDto})
-    @Patch('v1/conversations/edit')
-    async edit(@Body() conversation: editConversationDto) {
-      return await this.conversationService.edit(conversation);
+    @Patch('v1/conversations/:conversation_id/edit')
+    async edit(@Param('conversation_id') conversation_id: UUID, title:string ) {
+      return await this.conversationService.edit(conversation_id,title);
     }
 
     @ApiOperation({ summary: 'Delete a Conversation by ID' })
