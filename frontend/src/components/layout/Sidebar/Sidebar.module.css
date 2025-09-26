@@ -1,171 +1,326 @@
 .sidebar {
-  width: 16rem;
-  background: var(--color-white);
-  border-right: 1px solid var(--color-gray-200);
+  width: 260px;
+  min-width: 260px;
+  height: 100vh;
+  background: #1a1a1a;
+  border-right: 1px solid #333;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  transition: width var(--transition-normal);
-  z-index: 40;
+  padding: 0.5rem;
+  overflow-y: auto;
+  overflow-x: visible;
+  transition: width 0.3s ease, min-width 0.3s ease;
+  position: relative;
 }
 
-.sidebar.collapsed {
-  width: 4rem;
+/* Custom scrollbar styling */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
 }
 
-.header {
+.sidebar::-webkit-scrollbar-track {
+  background: #1a1a1a !important; /* Same as sidebar background */
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #6b7280 !important; /* Gray thumb */
+  border-radius: 4px;
+  border: 1px solid #9ca3af;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563 !important; /* Darker gray on hover */
+}
+
+.sidebar::-webkit-scrollbar-corner {
+  background: #1a1a1a !important;
+}
+
+/* Firefox scrollbar styling */
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #1a1a1a;
+}
+
+.sidebarMinimized {
+  width: 50px;
+  min-width: 50px;
+  padding: 0.5rem;
+  padding-right: 0.25rem; /* Consistent with normal sidebar */
+}
+
+.sidebarMinimized .sidebarHeader {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+.sidebarMinimized .logo {
+  display: flex;
+}
+
+.sidebarMinimized .toggleButton {
+  display: none;
+}
+
+.sidebarMinimized:hover .logo {
+  display: none;
+}
+
+.sidebarMinimized:hover .toggleButton {
+  display: flex;
+  opacity: 0;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+.sidebarHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-gray-200);
-  min-height: 4rem;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+  z-index: 10;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  color: var(--color-gray-900);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-}
-
-.logoIcon {
-  font-size: var(--font-size-xl);
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
 }
 
-.logoText {
-  font-size: var(--font-size-lg);
-  white-space: nowrap;
-  overflow: hidden;
-  opacity: 1;
-  transition: opacity var(--transition-normal);
-}
-
-.sidebar.collapsed .logoText {
-  opacity: 0;
-  width: 0;
+.logo:hover {
+  background: #333;
 }
 
 .toggleButton {
   background: none;
   border: none;
-  padding: 0.5rem;
-  border-radius: var(--radius-md);
+  color: #9ca3af;
   cursor: pointer;
-  color: var(--color-gray-600);
-  font-size: var(--font-size-lg);
-  font-weight: bold;
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.toggleButton:hover {
-  background: var(--color-gray-100);
-  color: var(--color-gray-900);
-}
-
-.nav {
-  flex: 1;
-  padding: 1rem 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.navLink {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  color: var(--color-gray-600);
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-sm);
-  transition: all var(--transition-fast);
-  position: relative;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.navLink:hover {
-  background: var(--color-gray-100);
-  color: var(--color-gray-900);
-}
-
-.navLink.active {
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-}
-
-.navLink.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 1.5rem;
-  background: var(--color-primary);
-  border-radius: 0 2px 2px 0;
-}
-
-.navIcon {
-  font-size: var(--font-size-lg);
-  flex-shrink: 0;
-  width: 1.5rem;
-  text-align: center;
-}
-
-.navText {
-  font-size: var(--font-size-sm);
-  opacity: 1;
-  transition: opacity var(--transition-normal);
-}
-
-.sidebar.collapsed .navText {
-  opacity: 0;
-  width: 0;
-}
-
-.footer {
-  padding: 1rem;
-  border-top: 1px solid var(--color-gray-200);
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.userAvatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--color-primary);
+  padding: 0.25rem;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
 }
 
-.avatarImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatarInitials {
+.toggleButton:hover {
+  background: #333;
   color: white;
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-sm);
+}
+
+.toggleButtonMinimized {
+  width: 2rem;
+  height: 2rem;
+  background: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+}
+
+.toggleButtonMinimized:hover {
+  background: #404040;
+  border-color: #555;
+}
+
+/* Universal sidebar button styles - applied to all buttons */
+.sidebarButton {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: left;
+  border: none;
+  overflow: hidden;
+}
+
+.sidebarButton svg {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.sidebarButton:hover {
+  background: #333;
+  color: white;
+}
+
+.sidebarButtonActive {
+  background: #333 !important;
+  color: white !important;
+}
+
+/* Text content styling */
+.sidebarButton span {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sidebarButtonMinimized {
+  justify-content: flex-start;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+
+/* Sticky buttons container */
+.stickyButtons {
+  position: sticky;
+  top: 45px; /* Exact header height: 40px (logo) + 16px (padding) */
+  background: #1a1a1a;
+  z-index: 9;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+.shortcut {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  background: none;
+  padding: 0.1rem;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebarButton:hover .shortcut {
+  opacity: 0.7;
+}
+
+/* Scrollbar styling */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #333;
+    flex-direction: row;
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+  }
+  
+  .sidebarMinimized {
+    width: 100%;
+    min-width: 100%;
+    padding: 0.5rem 1rem;
+    flex-direction: row;
+  }
+  
+  .sidebarHeader {
+    margin-bottom: 0;
+    margin-right: 0.5rem;
+    flex: 1;
+  }
+  
+  .logo {
+    margin-bottom: 0;
+    margin-right: 0.5rem;
+  }
+  
+  .toggleButton {
+    margin-top: 0;
+    width: auto;
+    flex-shrink: 0;
+  }
+  
+  .toggleButtonMinimized {
+    margin-top: 0;
+    width: auto;
+  }
+  
+  .sidebarButtonMinimized {
+    flex: 1;
+    margin-bottom: 0;
+  }
+  
+  .shortcut {
+    display: none;
+  }
+  
+  /* All sidebar buttons use universal .sidebarButton styles */
+}
+
+/* Profile Section - Footer (inherits from .sidebarButton) */
+.profileSection {
+  margin-top: auto;
+  border-top: 1px solid #333;
+  /* All other properties inherited from .sidebarButton */
+}
+
+.profileInfo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+  transition: transform 0.3s ease;
+}
+
+.avatar svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .userDetails {
@@ -173,130 +328,206 @@
   flex-direction: column;
   gap: 0.125rem;
   min-width: 0;
-  opacity: 1;
-  transition: opacity var(--transition-normal);
-}
-
-.sidebar.collapsed .userDetails {
-  opacity: 0;
-  width: 0;
+  flex: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .userName {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-gray-900);
-  line-height: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.userEmail {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-  line-height: 1;
+.userStatus {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    left: -16rem;
-    top: 0;
-    z-index: 50;
-    transition: left var(--transition-normal);
-  }
-  
-  .sidebar.open {
-    left: 0;
-  }
-  
-  .sidebar.collapsed {
-    width: 16rem;
-  }
-  
-  .logoText {
-    opacity: 1;
-  }
-  
-  .navText {
-    opacity: 1;
-  }
-  
-  .userDetails {
-    opacity: 1;
-  }
+.upgradeButton {
+  background: #2d2d2d;
+  border: 1px solid #484848;
+  color: white;
+  padding: 0.3rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-@media (max-width: 640px) {
-  .sidebar {
-    width: 14rem;
-  }
-  
-  .header {
-    padding: 0.75rem;
-  }
-  
-  .nav {
-    padding: 0.75rem 0.25rem;
-  }
-  
-  .navLink {
-    padding: 0.625rem 0.75rem;
-  }
-  
-  .footer {
-    padding: 0.75rem;
-  }
+.upgradeButton:hover {
+  background: #404040;
+  border-color: #555;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .sidebar {
-    background: var(--color-gray-800);
-    border-color: var(--color-gray-700);
-  }
-  
-  .logo {
-    color: var(--color-gray-100);
-  }
-  
-  .toggleButton {
-    color: var(--color-gray-300);
-  }
-  
-  .toggleButton:hover {
-    background: var(--color-gray-700);
-    color: var(--color-gray-100);
-  }
-  
-  .navLink {
-    color: var(--color-gray-300);
-  }
-  
-  .navLink:hover {
-    background: var(--color-gray-700);
-    color: var(--color-gray-100);
-  }
-  
-  .navLink.active {
-    background: var(--color-primary-dark);
-    color: var(--color-primary-light);
-  }
-  
-  .footer {
-    border-color: var(--color-gray-700);
-  }
-  
-  .userName {
-    color: var(--color-gray-100);
-  }
-  
-  .userEmail {
-    color: var(--color-gray-400);
-  }
+/* Minimized Profile Section */
+.sidebarButtonMinimized .profileInfo {
+  justify-content: center;
 }
+
+  /* Chat History Section */
+.chatHistorySection {
+  flex: 1;
+  overflow-y: auto;
+  margin: 1rem 0;
+  max-height: calc(100vh - 200px); /* Ensure it has a max height to trigger scroll */
+}
+
+/* Custom scrollbar for chat history */
+.chatHistorySection::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chatHistorySection::-webkit-scrollbar-track {
+  background: #1a1a1a !important;
+  border-radius: 4px;
+}
+
+.chatHistorySection::-webkit-scrollbar-thumb {
+  background: #6b7280 !important;
+  border-radius: 4px;
+  border: 1px solid #656565;
+}
+
+.chatHistorySection::-webkit-scrollbar-thumb:hover {
+  background: #4b5563 !important;
+}
+
+.chatHistorySection::-webkit-scrollbar-corner {
+  background: #1a1a1a !important;
+}
+
+.sectionTitle {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.chatHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.emptyIcon {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.emptySubtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Profile Dropdown */
+.profileSection {
+  position: relative;
+}
+
+.profileDropdown {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #484848;
+  border-radius: 0.75rem;
+  padding: 0.3rem;
+  min-width: 200px;
+  z-index: 9999;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #404040;
+}
+
+.dropdownIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.dropdownText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  text-align: left;
+  flex: 1;
+}
+
+.dropdownTitle {
+  color: white;
+  font-size: 0.875rem;
+  text-align: left;
+  font-weight: 400;
+}
+
+.dropdownSubtitle {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.dropdownSeparator {
+  height: 1px;
+  background: #484848;
+  margin: 0.25rem 0;
+}
+
+.dropdownArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+

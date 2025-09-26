@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './HomePage.module.css';
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const HomePage: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isAttachDropdownOpen, setIsAttachDropdownOpen] = useState(false);
@@ -14,40 +21,143 @@ const HomePage: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isHelpDropdownOpen, setIsHelpDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const helpDropdownRef = React.useRef<HTMLDivElement>(null);
+  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      const scrollElement = messagesContainerRef.current;
+      
+      // Force scroll to bottom with multiple methods
+      const scrollToBottomValue = scrollElement.scrollHeight - scrollElement.clientHeight;
+      
+      // Method 1: Direct assignment
+      scrollElement.scrollTop = scrollToBottomValue;
+      
+      // Method 2: Using scrollTo method
+      scrollElement.scrollTo({
+        top: scrollToBottomValue,
+        behavior: 'smooth'
+      });
+      
+      // Method 3: Using scrollIntoView on last message
+      const lastMessage = scrollElement.querySelector('.message:last-child');
+      if (lastMessage) {
+        lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+      
+      // Method 4: Fallback with setTimeout
+      setTimeout(() => {
+        scrollElement.scrollTop = scrollToBottomValue;
+      }, 100);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    
+    // Auto-resize textarea (stretch upward)
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(textarea.scrollHeight, 170); // 170px = 10.625rem
+    textarea.style.height = newHeight + 'px';
+    
+    // Scroll to bottom to show latest content
+    textarea.scrollTop = textarea.scrollHeight;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || uploadedImages.length > 0) {
-      // Redirect to chat page with the input and images
-      navigate('/chat', { 
-        state: { 
-          initialMessage: inputValue,
-          uploadedImages: uploadedImages,
-          imagePreviews: imagePreviews
-        } 
-      });
+      // Add user message
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: inputValue.trim(),
+        isUser: true,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, userMessage]);
+      setIsLoading(true);
+      
+      // Scroll immediately after adding user message
+      setTimeout(() => scrollToBottom(), 100);
+      
+      // Simulate AI response (replace with actual API call)
+      setTimeout(() => {
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: "Hi! Could you share a bit more about what you'd like me to respond to?",
+          isUser: false,
+          timestamp: new Date()
+        };
+        
+        setChatMessages(prev => [...prev, aiMessage]);
+        setIsLoading(false);
+        
+        // Scroll after AI response
+        setTimeout(() => scrollToBottom(), 100);
+      }, 1000);
+      
+      // Clear input
+      setInputValue('');
+      setUploadedImages([]);
+      setImagePreviews([]);
     }
   };
 
   const handleAttachClick = () => {
-    console.log('Attach button clicked, current state:', isAttachDropdownOpen);
+    if (!isAttachDropdownOpen && attachContainerRef.current) {
+      const buttonRect = attachContainerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 200; // Approximate dropdown height
+      
+      // Check if dropdown would overflow bottom of viewport
+      const wouldOverflowBottom = buttonRect.bottom + dropdownHeight > viewportHeight;
+      
+      // Check if dropdown would overflow top of viewport (if positioned above)
+      const wouldOverflowTop = buttonRect.top - dropdownHeight < 0;
+      
+      // Position dropdown to avoid overflow
+      if (wouldOverflowBottom && !wouldOverflowTop) {
+        // Dropdown would overflow bottom but not top, position above
+        setDropdownPosition('top');
+      } else if (wouldOverflowTop && !wouldOverflowBottom) {
+        // Dropdown would overflow top but not bottom, position below
+        setDropdownPosition('bottom');
+      } else if (wouldOverflowBottom && wouldOverflowTop) {
+        // Dropdown would overflow both, choose the side with more space
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+        setDropdownPosition(spaceBelow > spaceAbove ? 'bottom' : 'top');
+      } else {
+        // No overflow, default to bottom
+        setDropdownPosition('bottom');
+      }
+    }
+    
     setIsAttachDropdownOpen(!isAttachDropdownOpen);
   };
 
   const handleAttachOptionClick = (option: string) => {
-    console.log('Selected option:', option);
-    if (option === 'images') {
+    if (option === 'photos') {
       fileInputRef.current?.click();
     }
+    // TODO: Implement other options
     setIsAttachDropdownOpen(false);
   };
 
@@ -175,13 +285,12 @@ const HomePage: React.FC = () => {
     setIsHelpDropdownOpen(!isHelpDropdownOpen);
   };
 
-  const handleHelpOptionClick = (option: string) => {
-    console.log('Selected help option:', option);
+  const handleHelpOptionClick = (_option: string) => {
     setIsHelpDropdownOpen(false);
     // Handle different help options here
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside and adjust position on scroll/resize
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isAttachDropdownOpen && attachContainerRef.current) {
@@ -196,18 +305,65 @@ const HomePage: React.FC = () => {
       }
     };
 
+    const handleScrollResize = () => {
+      if (isAttachDropdownOpen && attachContainerRef.current) {
+        const buttonRect = attachContainerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const dropdownHeight = 200; // Approximate dropdown height
+        
+        // Check if dropdown would overflow bottom of viewport
+        const wouldOverflowBottom = buttonRect.bottom + dropdownHeight > viewportHeight;
+        
+        // Check if dropdown would overflow top of viewport (if positioned above)
+        const wouldOverflowTop = buttonRect.top - dropdownHeight < 0;
+        
+        // Position dropdown to avoid overflow
+        if (wouldOverflowBottom && !wouldOverflowTop) {
+          // Dropdown would overflow bottom but not top, position above
+          setDropdownPosition('top');
+        } else if (wouldOverflowTop && !wouldOverflowBottom) {
+          // Dropdown would overflow top but not bottom, position below
+          setDropdownPosition('bottom');
+        } else if (wouldOverflowBottom && wouldOverflowTop) {
+          // Dropdown would overflow both, choose the side with more space
+          const spaceBelow = viewportHeight - buttonRect.bottom;
+          const spaceAbove = buttonRect.top;
+          setDropdownPosition(spaceBelow > spaceAbove ? 'bottom' : 'top');
+        } else {
+          // No overflow, default to bottom
+          setDropdownPosition('bottom');
+        }
+      }
+    };
+
     if (isAttachDropdownOpen || isHelpDropdownOpen) {
       // Add event listener with a small delay to avoid conflicts
       const timeoutId = setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
+        window.addEventListener('scroll', handleScrollResize);
+        window.addEventListener('resize', handleScrollResize);
       }, 100);
 
       return () => {
         clearTimeout(timeoutId);
         document.removeEventListener('click', handleClickOutside);
+        window.removeEventListener('scroll', handleScrollResize);
+        window.removeEventListener('resize', handleScrollResize);
       };
     }
   }, [isAttachDropdownOpen, isHelpDropdownOpen]);
+
+  // Auto-scroll to bottom when new messages are added
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, isLoading]);
+
+  // Additional scroll trigger for when loading state changes
+  React.useEffect(() => {
+    if (!isLoading && chatMessages.length > 0) {
+      scrollToBottom();
+    }
+  }, [isLoading]);
 
   // Close modal with ESC key
   React.useEffect(() => {
@@ -351,11 +507,65 @@ const HomePage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className={styles.main}>
+      <main className={chatMessages.length === 0 ? styles.main : styles.mainWithMessages}>
         <div className={styles.content}>
-          <h1 className={styles.title}>WebUI AI</h1>
+          {chatMessages.length === 0 ? (
+            <h1 className={styles.title}>WebUI AI</h1>
+          ) : (
+            <div ref={messagesContainerRef} className={styles.messagesContainer}>
+              <div className={styles.messagesWrapper}>
+                {chatMessages.map((message) => (
+                <div key={message.id} className={`${styles.message} ${message.isUser ? styles.userMessage : styles.aiMessage}`}>
+                  <div className={styles.messageContent}>
+                    {message.content}
+                  </div>
+                  {!message.isUser && (
+                    <div className={styles.messageActions}>
+                      <button className={styles.actionButton}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M7 14H5v5h5v-2H7v-3zm-2-9h3V2H5v5h2V5zm11.5 6c-1.24 0-2.25-1.01-2.25-2.25S15.26 8.5 16.5 8.5s2.25 1.01 2.25 2.25S17.74 13.5 16.5 13.5zM7 16h3v2H7v-2zm0-8h3v2H7V8z"/>
+                        </svg>
+                      </button>
+                      <button className={styles.actionButton}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M15 3H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 16V5h9v14H6zm8-12h-5v2h5V7zm0 4h-5v2h5v-2zm0 4h-5v2h5v-2z"/>
+                        </svg>
+                      </button>
+                      <button className={styles.actionButton}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                      </button>
+                      <button className={styles.actionButton}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                      </button>
+                      <button className={styles.actionButton}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className={`${styles.message} ${styles.aiMessage}`}>
+                  <div className={styles.loadingMessage}>
+                    <div className={styles.loadingDots}>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              </div>
+            </div>
+          )}
           
-          <form onSubmit={handleSubmit} className={styles.inputForm}>
+          <form onSubmit={handleSubmit} className={`${styles.inputForm} ${chatMessages.length > 0 ? styles.inputFormWithMessages : ''}`}>
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -476,16 +686,17 @@ const HomePage: React.FC = () => {
             )}
             
             <div className={styles.inputContainer}>
-              <input
-                type="text"
+              <textarea
                 value={inputValue}
                 onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 placeholder={
                   isSearchActive ? "Search the web" : 
                   isStudyActive ? "Learn something new" : 
                   "Ask anything"
                 }
                 className={styles.input}
+                rows={1}
               />
               <div className={`${styles.inputButtons} ${isAttachDropdownOpen ? styles.dropdownOpen : ''}`}>
                 <div className={styles.leftButtons}>
@@ -497,37 +708,75 @@ const HomePage: React.FC = () => {
                       Attach
                     </button>
                     {isAttachDropdownOpen && (
-                      <div className={styles.attachDropdown}>
-                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('images')}>
+                      <div className={`${styles.attachDropdown} ${dropdownPosition === 'top' ? styles.attachDropdownTop : ''}`}>
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('photos')}>
+                          <div className={styles.dropdownIcon}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+                            </svg>
+                          </div>
+                          <div className={styles.dropdownText}>
+                            <div className={styles.dropdownTitle}>Add photos & files</div>
+                          </div>
+                        </div>
+                        
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('create-image')}>
                           <div className={styles.dropdownIcon}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                             </svg>
                           </div>
                           <div className={styles.dropdownText}>
-                            <div className={styles.dropdownTitle}>Images</div>
+                            <div className={styles.dropdownTitle}>Create image</div>
                           </div>
                         </div>
-                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('documents')}>
+                        
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('think-longer')}>
                           <div className={styles.dropdownIcon}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                              <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
                             </svg>
                           </div>
                           <div className={styles.dropdownText}>
-                            <div className={styles.dropdownTitle}>Documents</div>
-                            <div className={styles.dropdownSubtitle}>Login required</div>
+                            <div className={styles.dropdownTitle}>Think longer</div>
                           </div>
                         </div>
-                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('connect-apps')}>
+                        
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('deep-research')}>
                           <div className={styles.dropdownIcon}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
                           </div>
                           <div className={styles.dropdownText}>
-                            <div className={styles.dropdownTitle}>Connect apps</div>
-                            <div className={styles.dropdownSubtitle}>Login required</div>
+                            <div className={styles.dropdownTitle}>Deep research</div>
+                          </div>
+                        </div>
+                        
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('study-learn')}>
+                          <div className={styles.dropdownIcon}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                            </svg>
+                          </div>
+                          <div className={styles.dropdownText}>
+                            <div className={styles.dropdownTitle}>Study and learn</div>
+                          </div>
+                        </div>
+                        
+                        <div className={styles.dropdownItem} onClick={() => handleAttachOptionClick('more')}>
+                          <div className={styles.dropdownIcon}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                            </svg>
+                          </div>
+                          <div className={styles.dropdownText}>
+                            <div className={styles.dropdownTitle}>More</div>
+                          </div>
+                          <div className={styles.dropdownArrow}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                            </svg>
                           </div>
                         </div>
                       </div>
@@ -594,3 +843,4 @@ const HomePage: React.FC = () => {
 };
 
 export default HomePage;
+
