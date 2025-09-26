@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -14,13 +15,15 @@ const Register: React.FC = () => {
   const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { register, isLoading, clearError } = useAuth();
-
-  // Load email from localStorage on component mount
+  const {  isLoading, clearError } = useAuth();
+  const location = useLocation();
+  // Load email from state on component mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('registerEmail');
-    if (savedEmail) {
-      setEmail(savedEmail);
+    const email_user = location.state.email || {};
+    if (email_user) {
+      setEmail(email_user);
+    } else {
+      navigate('/login');
     }
   }, []);
 
@@ -33,8 +36,6 @@ const Register: React.FC = () => {
 
 
   const handleEditEmail = () => {
-    // Kembali ke halaman Login
-    console.log('Navigating to login page...');
     navigate('/', { replace: true });
   };
 
@@ -67,11 +68,12 @@ const Register: React.FC = () => {
     }
 
     try {
-      await register({ email, password });
-      // Redirect ke halaman verifikasi setelah registrasi berhasil
-      navigate('/verification');
+      await authAPI.register({ email, password });
+      navigate('/verification', { state: { email } });
     } catch (error) {
-      // Handle error if needed
+      console.error('Registration failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert('Registrasi gagal: ' + errorMessage);
     }
   };
 

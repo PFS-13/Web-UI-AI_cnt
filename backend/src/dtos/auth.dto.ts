@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsUUID, IsString, IsEnum, IsEmail } from 'class-validator';
 import { UUID } from 'crypto';
+import { TokenType } from 'src/entity/token.entity';
 
 export class CheckEmailResponseDto {
   @ApiProperty({
@@ -20,6 +21,7 @@ export class RegisterResponseDto {
   @ApiProperty({ example: 'userId123', description: 'ID of user' })
   user_id: UUID;
 }
+
 
 export class VerifyOtpResponseDto {
   @ApiProperty({
@@ -41,13 +43,22 @@ export class AuthDto {
 }
 
 export class VerifyOtpDto {
-  @ApiProperty({ example: '123456', description: 'The OTP code sent to the user email' })
+  @ApiProperty({ example: '123456', description: 'The Code sent to the user email' })
   @IsString()
   @IsNotEmpty()
-  otp: string;
+  code: string;
 
-  @ApiProperty({ example: 'userId123', description: 'ID of the user' })
-  @IsUUID()
+  @ApiProperty({
+    description: 'Type of token to generate/send (allowed values are defined in TokenType enum)',
+    enum: TokenType,
+    example: TokenType.AUTH, 
+  })
+  @IsEnum(TokenType)
   @IsNotEmpty()
-  user_id: UUID;
+  token_type: TokenType;
+
+  @ApiProperty({ example: 'userId123', description: 'Email of the user' })
+  @IsString()
+  @IsNotEmpty()
+  email: string;
 }

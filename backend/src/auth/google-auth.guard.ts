@@ -12,7 +12,7 @@ export class GoogleAuthGuard extends AuthGuard('google') {
     const request = context.switchToHttp().getRequest();
     const email = request.query.email;
     return {
-      loginHint: email, // <-- param buat Google OAuth
+      loginHint: email,
     };
   }
 }
