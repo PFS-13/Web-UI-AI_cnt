@@ -12,8 +12,8 @@ export class ConversationController {
     private conversationService: ConversationService,
   ) {}
     @ApiOperation({ summary: 'Get Conversations by User ID' })
-    @Get('v1/user/:user_id')
-    async getConversationByUserId(@Param('user_id') user_id: getConversationByUserId) {
+    @Get('v1/users/:user_id')
+    async getConversationByUserId(@Param('user_id') user_id: UUID) {
       return await this.conversationService.findAllByUserId(user_id);
     }
 
@@ -28,8 +28,8 @@ export class ConversationController {
     @ApiOperation({ summary: 'Create shared url for conversation' })
     @HttpCode(200)
     @Patch('v1/conversations/:conversation_id/create-share-url')
-    async shareConverasation(@Param('conversation_id') conversation_id: UUID) {
-      return await this.conversationService.share(conversation_id);
+    async shareConverasation(@Param('conversation_id') conversation_id: UUID, @Body('path')  path: string) {
+      return await this.conversationService.share(conversation_id, path);
     }
 
     @ApiOperation({ summary: 'Edit title of Conversation' })

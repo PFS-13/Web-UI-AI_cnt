@@ -29,7 +29,7 @@ export class createMessageDto {
     @ApiProperty({ description: 'True if user the one who send the message. False if the message is AI Response', example : true })
     @IsBoolean()
     @IsNotEmpty() 
-    is_from_sender: boolean; 
+    is_user: boolean; 
   
     @ApiProperty({ description: 'True if the message also attach file. False if not', example : false })
     @IsBoolean()

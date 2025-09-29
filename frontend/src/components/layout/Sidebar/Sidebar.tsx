@@ -1,42 +1,28 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-
 interface SidebarProps {
   isMinimized: boolean;
   onToggle: () => void;
+  user?: {
+    username: string;
+    email: string;
+    id: string;
+  };
+  activated_conversation?: string;
+  chatHistory?: Array<{ id: string; title: string; isActive: boolean }>;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
+
+const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, activated_conversation, chatHistory }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '200px' });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
 
-  // Mock chat history data - 20 dummy chats
-  const chatHistory: Array<{id: number, title: string, isActive: boolean}> = [
-    { id: 1, title: "Cara pakai shadcn", isActive: false },
-    { id: 2, title: "Cara cek branch aktif", isActive: false },
-    { id: 3, title: "Info terkait BE", isActive: false },
-    { id: 4, title: "Menangani commit salah", isActive: false },
-    { id: 5, title: "Display typing indicator", isActive: true },
-    { id: 6, title: "Setup React Router", isActive: false },
-    { id: 7, title: "Implementasi JWT Auth", isActive: false },
-    { id: 8, title: "Database Migration", isActive: false },
-    { id: 9, title: "API Documentation", isActive: false },
-    { id: 10, title: "Frontend State Management", isActive: false },
-    { id: 11, title: "CSS Grid Layout", isActive: false },
-    { id: 12, title: "TypeScript Best Practices", isActive: false },
-    { id: 13, title: "Deployment ke Vercel", isActive: false },
-    { id: 14, title: "Testing dengan Jest", isActive: false },
-    { id: 15, title: "Error Handling", isActive: false },
-    { id: 16, title: "Performance Optimization", isActive: false },
-    { id: 17, title: "Security Best Practices", isActive: false },
-    { id: 18, title: "Docker Configuration", isActive: false },
-    { id: 19, title: "CI/CD Pipeline", isActive: false },
-    { id: 20, title: "Monitoring dan Logging", isActive: false },
-  ];
+
+
 
   const handleNewChat = () => {
     navigate('/chat');
@@ -57,6 +43,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
     // TODO: Implement upgrade functionality
   };
 
+
+
   const handleProfileClick = () => {
     if (!isProfileDropdownOpen && profileSectionRef.current) {
       const rect = profileSectionRef.current.getBoundingClientRect();
@@ -74,9 +62,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
     // TODO: Implement different actions based on action parameter
   };
 
-  const handleChatClick = (chatId: number) => {
+  const handleChatClick = (chatId: string) => {
     // TODO: Navigate to specific chat
-    console.log('Opening chat:', chatId);
+    navigate(`/c/${chatId}`);
   };
 
   // Close dropdown when clicking outside
@@ -181,8 +169,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
       {!isMinimized && (
         <div className={styles.chatHistorySection}>
           <div className={styles.sectionTitle}>Chats</div>
-          
-          {chatHistory.length > 0 ? (
+
+          {chatHistory  ? (
             <div className={styles.chatHistoryList}>
               {chatHistory.map((chat) => (
                 <button
@@ -218,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
           </div>
           {!isMinimized && (
             <div className={styles.userDetails}>
-              <div className={styles.userName}>Hans Mian</div>
+              <div className={styles.userName}>{user?.username}</div>
               <div className={styles.userStatus}>Free</div>
             </div>
           )}
@@ -251,7 +239,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle }) => {
                 </svg>
               </div>
               <div className={styles.dropdownText}>
-                <div className={styles.dropdownTitle}>raihanmian6@gmail.com</div>
+                <div className={styles.dropdownTitle}>{user?.email}</div>
               </div>
             </div>
 

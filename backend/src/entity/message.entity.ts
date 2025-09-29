@@ -24,7 +24,7 @@ export class Message {
   is_attach_file: boolean;
 
   @Column({ type: 'boolean', nullable: true })
-  is_from_sender: boolean;
+  is_user: boolean;
 
   @Column({ type: 'int', nullable: true })
   edited_from_message_id: number;

@@ -50,8 +50,6 @@ export class MessageService {
     if (!this.aiClient) throw new Error('AI client not initialized');
     try {
       const call = async () => {
-        // NOTE: SDK shapes differ between versions. If SDK expects different arg names,
-        // create an adapter/provider to unify.
         const resp = await this.aiClient.models.generateContent({
           model: this.modelName,
           // keep prompt as contents but if SDK requires array -> adapt here
@@ -144,7 +142,7 @@ Please produce the JSON only.
       where: { conversation_id: dto.conversation_id },
       order: { created_at: 'DESC' },
       take: 100,
-      select: ['id', 'content', 'is_from_sender', 'created_at'],
+      select: ['id', 'content', 'is_user', 'created_at'],
     });
     const historyEntitiesAll = recent.reverse();
 
@@ -156,7 +154,7 @@ Please produce the JSON only.
     });
 
     const lastContext = historyEntities.slice(-10).map(h => ({
-      role: h.is_from_sender ? 'user' : 'assistant',
+      role: h.is_user ? 'user' : 'assistant',
       text: h.content,
       created_at: h.created_at,
     }));
@@ -188,7 +186,7 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
       assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
     }
 
-    const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_from_sender);
+    const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_user);
     if (lastAssistant && lastAssistant.content) {
       const sim = this._similarityJaccard(lastAssistant.content, assistantText);
       this.logger.debug(`Similarity with last assistant reply = ${sim}`);
@@ -216,15 +214,14 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
     const assistantMsg = this.messageRepo.create({
       conversation_id: dto.conversation_id,
       content: assistantText,
-      is_from_sender: false,
+      is_user: false,
       is_attach_file: false,
       parent_message_id: userMsg.id
     });
     await this.messageRepo.save(assistantMsg);
 
     return {
-      reply: { analysis: null, final: assistantText },
-      meta: { model: this.modelName, conversation_id: dto.conversation_id, assistantMessageId: assistantMsg.id },
+      reply: { message_id: assistantMsg.id, message: assistantText },
     };
   }
 
@@ -296,43 +293,69 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
       .slice(0,3);
   }
 
-  // private _guessIntentLocal(text: string): string {
-  //   const low = text.toLowerCase();
-  //   if (low.includes('buat') || low.includes('bikin') || low.includes('tolong buat')) return 'create';
-  //   if (low.includes('hapus') || low.includes('delete')) return 'delete';
-  //   if (low.includes('bantuan') || low.includes('help')) return 'help';
-  //   if (low.includes('cara') || low.includes('bagaimana')) return 'ask_howto';
-  //   return 'unknown';
-  // }
-
-  // private _localEntities(text: string) {
-  //   const ents: any[] = [];
-  //   const phone = text.match(/(\+62|0)\d{6,}/g);
-  //   if (phone) phone.forEach(p => ents.push({ type: 'phone', value: p }));
-  //   const email = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi);
-  //   if (email) email.forEach(e => ents.push({ type: 'email', value: e }));
-  //   const keywords = this._extractKeywords(text);
-  //   if (keywords.length) keywords.forEach(k => ents.push({ type: 'keyword', value: k }));
-  //   return ents;
-  // }
-
-  async findByConversationId(conversation_id: UUID): Promise<Message[]> {
-    const sql = `
+async findByConversationId(conversation_id: UUID): Promise<any[]> {
+  const sql = `
     WITH RECURSIVE message_tree AS (
-      SELECT id, conversation_id, content, parent_message_id, ARRAY[id] AS path_ids, ARRAY[content] AS path_contents
+      SELECT 
+        id,
+        conversation_id,
+        content,
+        created_at,
+        is_attach_file,
+        is_user,
+        edited_from_message_id,
+        parent_message_id,
+        ARRAY[id] AS path_ids,
+        ARRAY[
+          jsonb_build_object(
+            'id', id,
+            'conversation_id', conversation_id,
+            'content', content,
+            'created_at', created_at,
+            'is_attach_file', is_attach_file,
+            'is_user', is_user,
+            'edited_from_message_id', edited_from_message_id,
+            'parent_message_id', parent_message_id
+          )
+        ] AS path_messages
       FROM message
       WHERE parent_message_id IS NULL
         AND conversation_id = $1
+
       UNION ALL
-      SELECT m.id, m.conversation_id, m.content, m.parent_message_id, mt.path_ids || m.id, mt.path_contents || m.content
+
+      SELECT 
+        m.id,
+        m.conversation_id,
+        m.content,
+        m.created_at,
+        m.is_attach_file,
+        m.is_user,
+        m.edited_from_message_id,
+        m.parent_message_id,
+        mt.path_ids || m.id,
+        mt.path_messages || jsonb_build_object(
+          'id', m.id,
+          'conversation_id', m.conversation_id,
+          'content', m.content,
+          'created_at', m.created_at,
+          'is_attach_file', m.is_attach_file,
+          'is_user', m.is_user,
+          'edited_from_message_id', m.edited_from_message_id,
+          'parent_message_id', m.parent_message_id
+        )
       FROM message m
       JOIN message_tree mt ON m.parent_message_id = mt.id
     )
-    SELECT path_ids, path_contents
+    SELECT 
+      path_ids,
+      path_messages
     FROM message_tree mt
     WHERE NOT EXISTS (SELECT 1 FROM message ch WHERE ch.parent_message_id = mt.id)
     ORDER BY path_ids;
   `;
   return this.messageRepo.manager.query(sql, [conversation_id]);
-  }
+}
+
+
 }

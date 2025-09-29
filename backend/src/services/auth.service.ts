@@ -108,18 +108,16 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     };
   }
    async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<void> {
-    return this.dataSource.transaction(async (manager) => {
-      const user = await this.usersService.findByEmail(email, manager);
-      if (!user) {
-        throw new NotFoundException('Email Not found');
-      }
-      await this.tokenService.verifyCode(user.id, token_type, code, manager);
-      await this.tokenService.delete(user.id, token_type, manager);
-      if (token_type === TokenType.AUTH) {
-        await this.usersService.activate(user.id, manager);
-      }
-    });
+  const user = await this.usersService.findByEmail(email);
+  if (!user) {
+    throw new NotFoundException('Email Not found');
   }
+
+  await this.tokenService.verifyCodeAndDelete(user.id, token_type, code);
+  if (token_type === TokenType.AUTH) {
+    await this.usersService.activate(user.id);
+  }
+}
 
   async validateUser(loginDto: AuthDto): Promise<any> {
     const user = await this.usersService.findByEmail(loginDto.email);
@@ -214,13 +212,13 @@ async createUser({ email, password }: AuthDto): Promise<User> {
       if (!user) {
         throw new NotFoundException("Email not found");
       }
-    const token = await this.tokenService.findToken(user.id, token_type, manager);
-    if (!token) {
-      this.createTokenSendEmail(user.id, token_type, user.email);
-    } else {
-      this.tokenService.delete(user.id, token_type, manager);
-      this.createTokenSendEmail(user.id, token_type, user.email);
-    }
+      const token = await this.tokenService.findToken(user.id, token_type, manager);
+      if (!token) {
+        this.createTokenSendEmail(user.id, token_type, user.email);
+      } else {
+        this.tokenService.delete(user.id, token_type, manager);
+        this.createTokenSendEmail(user.id, token_type, user.email);
+      }
   });
   }
 
