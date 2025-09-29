@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import Sidebar from '../../components/layout/Sidebar/Sidebar';
-import styles from './Dashboard.module.css';
-import { conversationAPI } from '../../services';
+import Sidebar from '../../../components/layout/Sidebar/Sidebar';
+import styles from './ChatId.module.css';
+import { conversationAPI } from '../../../services';
 
 interface ChatMessage {
-  id: string;
+  id?: number;
   content: string;
-  isUser: boolean;
-  timestamp: Date;
-
+  is_user: boolean;
+  // timestamp: Date;
 }
-import { authAPI } from '../../services';
-import { useNavigate } from 'react-router';
+import { authAPI } from '../../../services';
+import { messageAPI } from '../../../services/api/message.api';
+import { useParams } from 'react-router-dom';
 
-const Dashboard: React.FC = () => {
+const ChatIdPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<any>(null);
   const [inputValue, setInputValue] = useState('');
   const [isAttachDropdownOpen, setIsAttachDropdownOpen] = useState(false);
@@ -25,19 +26,17 @@ const Dashboard: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
-  const [chatMessages] = useState<ChatMessage[]>([]);
-  const [isLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
-  const [chatHistory, setChatHistory] = useState<
-      Array<{ id: string; title: string; isActive: boolean }>
-    >([]);
-  
-  const Navigate = useNavigate();
-
+  const [lastChat,setLastChat] = useState<number | null>(null);
+   const [chatHistory, setChatHistory] = useState<
+        Array<{ id: string; title: string; isActive: boolean }>
+      >([]);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -50,24 +49,47 @@ const Dashboard: React.FC = () => {
     };
     fetchUser();
   }, []);
+    useEffect(() => {
+      const fetchConversations = async () => {
+        try {
+          const conversations = await conversationAPI.getConversationsByUserId(user.id);
+          const chatHistory = conversations.map((item: any) => ({
+            id: item.conversation_id,
+            title: item.title,
+            isActive: item.conversation_id === id
+          }));
+    
+          setChatHistory(chatHistory);
+        } catch (error) {
+          console.error('Error fetching conversations:', error);
+        }
+      };
+      fetchConversations();
+    }, [user])
 
   useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const conversations = await conversationAPI.getConversationsByUserId(user.id);
-        const chatHistory = conversations.map((item: any) => ({
-          id: item.conversation_id,
-          title: item.title,
-          isActive: false
-        }));
-  
-        setChatHistory(chatHistory);
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-      }
-    };
-    fetchConversations();
-  }, [user])
+    if (id) {
+      const fetchMessages = async () => {
+        try {
+          const response = await messageAPI.getMessages(id);
+          const firstPath = response[0];
+
+          const messages: ChatMessage[] = firstPath.path_messages.map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            is_user: msg.is_user,
+          }));
+          setChatMessages(messages);
+          setLastChat(messages.length > 0 ? messages[messages.length - 1].id! : null);
+
+          console.log('Fetched messages:', messages);
+        } catch (error) {
+          console.error('Failed to fetch messages:', error);
+        }
+      };
+      fetchMessages();
+    }
+  }, [id]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -98,11 +120,38 @@ const Dashboard: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || uploadedImages.length > 0) {
-      const response = await conversationAPI.createConversation({ user_id: user.id });
+      // Add user message
+      const userMessage: ChatMessage = {
+        content: inputValue.trim(),
+        is_user: true,
+      };
+      setInputValue('');
+      setChatMessages(prev => [...prev, userMessage]);
+      const response = await messageAPI.sendMessage({ 
+        content: userMessage.content,
+        conversation_id: id!,
+        is_user: true,
+        is_attach_file: uploadedImages.length > 0,
+        parent_message_id: lastChat,
+        edited_from_message_id: undefined
+        });
+      console.log('AI response:', response);
+      setTimeout(() => {
+        const aiMessage: ChatMessage = { 
+          content: response.reply.message,
+          is_user: false,
+        };
+        setChatMessages(prev => [...prev, aiMessage]);
+        setLastChat(response.reply.message_id);
+        setIsLoading(false);
+      }, 1000);
       
-      Navigate(`/c/${response.conversation_id}`);
+      // Clear input
+      setUploadedImages([]);
+      setImagePreviews([]);
     }
   };
+  
 
   const handleAttachClick = () => {
     console.log('Attach button clicked, current state:', isAttachDropdownOpen);
@@ -178,17 +227,13 @@ const Dashboard: React.FC = () => {
       });
       previewPromises.push(previewPromise);
     });
-
            if (validFiles.length > 0) {
              setUploadedImages(prev => [...validFiles, ...prev]);
-             
              // Update previews setelah semua file dibaca
              Promise.all(previewPromises).then((previews) => {
                setImagePreviews(prev => [...previews, ...prev]);
              });
            }
-
-    // Reset input value agar bisa upload file yang sama lagi
     e.target.value = '';
   };
 
@@ -243,6 +288,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
+
+
   const toggleSidebar = () => {
     setIsSidebarMinimized(!isSidebarMinimized);
   };
@@ -263,6 +310,7 @@ const Dashboard: React.FC = () => {
       console.error('Failed to copy: ', err);
     }
   };
+
 
   // Close dropdown when clicking outside and adjust position on scroll/resize
   React.useEffect(() => {
@@ -395,8 +443,8 @@ const Dashboard: React.FC = () => {
         isMinimized={isSidebarMinimized} 
         onToggle={toggleSidebar}
         user={user}
+        activated_conversation={id}
         chatHistory={chatHistory}
-        
       />
 
       {/* Main Content */}
@@ -429,11 +477,11 @@ const Dashboard: React.FC = () => {
             <div ref={messagesContainerRef} className={styles.messagesContainer}>
               <div className={styles.messagesWrapper}>
                 {chatMessages.map((message) => (
-                <div key={message.id} className={`${styles.message} ${message.isUser ? styles.userMessage : styles.aiMessage}`}>
+                <div key={message.id} className={`${styles.message} ${message.is_user ? styles.userMessage : styles.aiMessage}`}>
                   <div className={styles.messageContent}>
                     {message.content}
                   </div>
-                  {!message.isUser && (
+                  {!message.is_user && (
                     <div className={styles.messageActions}>
                       <button className={styles.actionButton}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -742,6 +790,6 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default ChatIdPage;
 
 

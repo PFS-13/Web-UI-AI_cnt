@@ -12,8 +12,8 @@ export class ConversationController {
     private conversationService: ConversationService,
   ) {}
     @ApiOperation({ summary: 'Get Conversations by User ID' })
-    @Get('v1/user/:user_id')
-    async getConversationByUserId(@Param('user_id') user_id: getConversationByUserId) {
+    @Get('v1/users/:user_id')
+    async getConversationByUserId(@Param('user_id') user_id: UUID) {
       return await this.conversationService.findAllByUserId(user_id);
     }
 

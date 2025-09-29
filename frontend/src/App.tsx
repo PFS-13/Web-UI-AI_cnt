@@ -5,6 +5,7 @@ import { HomePage, Login, Register, Verification, AuthCallback, Dashboard, ChatP
 import styles from './App.module.css';
 import LoginTest from './LoginTest';
 import ProtectedRoute from './ProtectedRoute';
+import ChatIdPage from './pages/chat/[id]/Page';
 // import ChangePasswordPage from './forgotpassword';
 import ChatbotPage  from './chatbot';
 const App: React.FC = () => {
@@ -17,10 +18,9 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/login-test" element={<LoginTest />} />
           <Route path="/chatbot" element={
-              // <ProtectedRoute>
                 <ChatbotPage />
-              // </ProtectedRoute>
             } />
+           
           <Route path="/register" element={<Register />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/auth-callback" element={<AuthCallback />} />
@@ -30,6 +30,11 @@ const App: React.FC = () => {
                 <Dashboard />
               </ProtectedRoute>
             }></Route>
+            <Route path="/c/:id" element={
+                <ProtectedRoute>
+                  <ChatIdPage />
+                </ProtectedRoute>
+              } />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/conversations" element={<ConversationHistory />} />
           {/* Arahkan semua rute yang tidak cocok ke halaman dashboard */}

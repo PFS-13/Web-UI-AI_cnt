@@ -50,8 +50,6 @@ export class MessageService {
     if (!this.aiClient) throw new Error('AI client not initialized');
     try {
       const call = async () => {
-        // NOTE: SDK shapes differ between versions. If SDK expects different arg names,
-        // create an adapter/provider to unify.
         const resp = await this.aiClient.models.generateContent({
           model: this.modelName,
           // keep prompt as contents but if SDK requires array -> adapt here
@@ -144,7 +142,7 @@ Please produce the JSON only.
       where: { conversation_id: dto.conversation_id },
       order: { created_at: 'DESC' },
       take: 100,
-      select: ['id', 'content', 'is_from_sender', 'created_at'],
+      select: ['id', 'content', 'is_user', 'created_at'],
     });
     const historyEntitiesAll = recent.reverse();
 
@@ -156,7 +154,7 @@ Please produce the JSON only.
     });
 
     const lastContext = historyEntities.slice(-10).map(h => ({
-      role: h.is_from_sender ? 'user' : 'assistant',
+      role: h.is_user ? 'user' : 'assistant',
       text: h.content,
       created_at: h.created_at,
     }));
@@ -188,7 +186,7 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
       assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
     }
 
-    const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_from_sender);
+    const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_user);
     if (lastAssistant && lastAssistant.content) {
       const sim = this._similarityJaccard(lastAssistant.content, assistantText);
       this.logger.debug(`Similarity with last assistant reply = ${sim}`);
@@ -216,15 +214,14 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
     const assistantMsg = this.messageRepo.create({
       conversation_id: dto.conversation_id,
       content: assistantText,
-      is_from_sender: false,
+      is_user: false,
       is_attach_file: false,
       parent_message_id: userMsg.id
     });
     await this.messageRepo.save(assistantMsg);
 
     return {
-      reply: { analysis: null, final: assistantText },
-      meta: { model: this.modelName, conversation_id: dto.conversation_id, assistantMessageId: assistantMsg.id },
+      reply: { message_id: assistantMsg.id, message: assistantText },
     };
   }
 
@@ -305,11 +302,10 @@ async findByConversationId(conversation_id: UUID): Promise<any[]> {
         content,
         created_at,
         is_attach_file,
-        is_from_sender,
+        is_user,
         edited_from_message_id,
         parent_message_id,
         ARRAY[id] AS path_ids,
-        ARRAY[content] AS path_contents,
         ARRAY[
           jsonb_build_object(
             'id', id,
@@ -317,7 +313,7 @@ async findByConversationId(conversation_id: UUID): Promise<any[]> {
             'content', content,
             'created_at', created_at,
             'is_attach_file', is_attach_file,
-            'is_from_sender', is_from_sender,
+            'is_user', is_user,
             'edited_from_message_id', edited_from_message_id,
             'parent_message_id', parent_message_id
           )
@@ -334,18 +330,17 @@ async findByConversationId(conversation_id: UUID): Promise<any[]> {
         m.content,
         m.created_at,
         m.is_attach_file,
-        m.is_from_sender,
+        m.is_user,
         m.edited_from_message_id,
         m.parent_message_id,
         mt.path_ids || m.id,
-        mt.path_contents || m.content,
         mt.path_messages || jsonb_build_object(
           'id', m.id,
           'conversation_id', m.conversation_id,
           'content', m.content,
           'created_at', m.created_at,
           'is_attach_file', m.is_attach_file,
-          'is_from_sender', m.is_from_sender,
+          'is_user', m.is_user,
           'edited_from_message_id', m.edited_from_message_id,
           'parent_message_id', m.parent_message_id
         )
@@ -354,7 +349,6 @@ async findByConversationId(conversation_id: UUID): Promise<any[]> {
     )
     SELECT 
       path_ids,
-      path_contents,
       path_messages
     FROM message_tree mt
     WHERE NOT EXISTS (SELECT 1 FROM message ch WHERE ch.parent_message_id = mt.id)

@@ -1,5 +1,7 @@
 import type { 
-Message, CreateMessagePayload
+CreateMessagePayload,
+SendMessageResponse,
+FetchMessagesResponse
 } from '../../types/message.types';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -39,25 +41,20 @@ class MessageApi {
   }
 
 
-  async sendMessage(message : CreateMessagePayload): Promise<Message> {
-    return this.request('/message/v1/messages/create', {
-      method: 'POST',
-      body: JSON.stringify(message),
-    });
+  async getMessages(conversation_id: string): Promise<FetchMessagesResponse> {
+    return this.request(`/message/v1/conversations/${conversation_id}`, { method: 'GET' });
   }
 
-  // async checkEmail(email: string): Promise<CheckEmailResponse> {
-  //   return this.request<CheckEmailResponse>(`/auth/v1/check-email?email=${encodeURIComponent(email)}`, {
-  //     method: 'GET',
-  //   });
-  // }
-
-  // async register(credentials: RegisterCredentials): Promise<AuthResponse> {
-  //   return this.request<AuthResponse>('/auth/v1/register', {
-  //     method: 'POST',
-  //     body: JSON.stringify(credentials),
-  //   });
-  // }
+  async sendMessage(message : CreateMessagePayload): Promise<SendMessageResponse> {
+    return this.request('/message/v1/messages/create', {
+      method: 'POST',
+      headers: {
+      'Content-Type': 'application/json', 
+    },
+      body: JSON.stringify(message),
+      
+    });
+  }
 
 }
 

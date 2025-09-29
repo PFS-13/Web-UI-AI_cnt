@@ -11,7 +11,7 @@ export class MessageController {
     private messageService: MessageService,
   ) {}
     @ApiOperation({ summary: 'Get Messages by Conversation ID' })
-    @Post('v1/conversations/:conversation_id')
+    @Get('v1/conversations/:conversation_id')
     async getMessageByConversationId(@Param('conversation_id') conversation_id: UUID) {
         return await this.messageService.findByConversationId(conversation_id);
     }
