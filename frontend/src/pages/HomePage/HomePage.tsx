@@ -431,7 +431,7 @@ const HomePage: React.FC = () => {
   };
 
   const handleSignUp = () => {
-    navigate('/register');
+    navigate('/login');
   };
 
   return (
