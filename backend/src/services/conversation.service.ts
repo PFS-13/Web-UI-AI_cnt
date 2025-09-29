@@ -25,12 +25,11 @@ export class ConversationService {
     return await this.conversationsRepository.findOne({ where: { user_id } });
   }
 
-  async findAllByUserId({user_id}: getConversationByUserId): Promise<Conversation[]> {
-    
+  async findAllByUserId(user_id: UUID): Promise<Conversation[]> {
     return await this.conversationsRepository.find({ where: { user_id } });
   }
 
-  async create(conversation: createConversationDto,): Promise<{ message: string; data?: Conversation }> {
+  async create(conversation: createConversationDto,): Promise<{ message?: string; conversation_id?: UUID; }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Conversation);
@@ -41,8 +40,7 @@ export class ConversationService {
         const newConversation = repo.create(conversation);
         const savedConversation = await repo.save(newConversation);
         return {
-          message: 'Conversation created successfully',
-          data: savedConversation,
+          conversation_id: savedConversation.conversation_id,
         };
       });
     } catch (error) {
@@ -52,7 +50,7 @@ export class ConversationService {
     }
   }
   
-  async share(conversation_id: UUID): Promise<{ message: string; shared_url?: string }> {
+  async share(conversation_id: UUID, path : string): Promise<{ message: string; shared_url?: string }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Conversation);
@@ -60,12 +58,15 @@ export class ConversationService {
         if (!existingConversation) {
           throw new NotFoundException('Conversation not found');
         }
+        if (!existingConversation.shared_url) {
         const shared_url = randomUUID();
         existingConversation.shared_url = shared_url;
+        }
+        existingConversation.shared_path = path;
         await repo.save(existingConversation);
         return {
           message: 'Conversation shared successfully',
-          data: shared_url,
+          data: existingConversation.shared_url,
         };
       });
     } catch (error) {

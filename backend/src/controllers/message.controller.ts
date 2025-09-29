@@ -23,14 +23,6 @@ export class MessageController {
       return await this.messageService.ask(messageDto);
     }
 
-
-    // @ApiOperation({ summary: 'Edit a Message' })
-    // @ApiBody({type: createMessageDto})
-    // @Patch('v1/messages/edit/:message_id')
-    // async editMessage(@Param('message_id') message_id: number, @Body() messageDto:editMessageDto) {
-    //   return await this.messageService.edit(message_id,messageDto);
-    // }
-
     
 
 }

@@ -25,13 +25,12 @@ export interface ChatState {
 }
 
 export interface CreateConversationRequest {
-  title: string;
   user_id: string;
 }
 
 export interface CreateConversationResponse {
-  message: string;
-  data?: Conversation;
+  conversation_id?: string;
+  message?: string;
 }
 
 export interface EditConversationRequest {

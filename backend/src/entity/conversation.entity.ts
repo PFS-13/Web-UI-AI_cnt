@@ -23,6 +23,9 @@ export class Conversation {
   @Column({ type: 'uuid',nullable: true })
   shared_url: string;
 
+  @Column({ type: 'varchar',nullable: true })
+  shared_path: string;
+
   @CreateDateColumn({ type: 'timestamp', default: () => 'now()' })
   created_at: Date;
 

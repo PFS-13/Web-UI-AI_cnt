@@ -22,31 +22,29 @@ export class TokenService {
   async findToken(user_id: string, token_type: TokenType, manager: EntityManager): Promise<Token | null> {
     return manager.getRepository(Token).findOne({ where: { user_id, token_type } });
   }
-  async verifyCode(user_id: string, token_type: TokenType, otp: string, manager?:EntityManager): Promise<boolean> {
-    const repo = manager ? manager.getRepository(Token) : this.tokensRepository;
-    const token = await repo.findOne({
+  async verifyCodeAndDelete(user_id: string, token_type: TokenType, otp: string): Promise<boolean> {
+    const token = await this.tokensRepository.findOne({
       where: { user_id, token_type },
     });
-
     if (!token) {
       throw new UnauthorizedException('Token not found');
     }
-
     // cek apakah sudah expired
     if (token.expired_date < new Date()) {
-      await this.tokensRepository.delete({ user_id });
+      await this.tokensRepository.delete({ user_id, token_type });
       throw new UnauthorizedException('Token expired, please resend email for new OTP');
     }
-    
     // cocokan OTP dengan hash di database
     const isMatch = await bcrypt.compare(String(otp), String(token.code));
     if (!isMatch) {
       throw new UnauthorizedException('Invalid OTP');
     }
+    await this.tokensRepository.delete({ user_id, token_type });
     return true;
   }
 
-  async delete(user_id: string, token_type: TokenType, manager: EntityManager): Promise<void> {
-    await manager.getRepository(Token).delete({ user_id, token_type });
+  async delete(user_id: string, token_type: TokenType, manager?: EntityManager): Promise<void> {
+    const repo = manager ? manager.getRepository(Token) : this.tokensRepository;
+    await repo.delete({ user_id, token_type });
   }
 }

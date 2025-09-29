@@ -1,4 +1,3 @@
-import type { ApiResponse, ApiError } from '../../types';
 import type { 
   Conversation, 
   CreateConversationRequest, 
@@ -45,8 +44,8 @@ class ConversationAPI {
     return data as T;
   }
 
-  async getConversationsByUserId(userId: string): Promise<Conversation[]> {
-    return this.request<Conversation[]>(`/conversation/v1/conversations/user/${userId}`);
+  async getConversationsByUserId(user_id: string): Promise<Conversation[]> {
+    return this.request<Conversation[]>(`/conversation/v1/users/${user_id}`);
   }
 
   async createConversation(request: CreateConversationRequest): Promise<CreateConversationResponse> {
