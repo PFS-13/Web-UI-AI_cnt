@@ -7,7 +7,6 @@ import LoginTest from './LoginTest';
 import ProtectedRoute from './ProtectedRoute';
 import ChatIdPage from './pages/chat/[id]/Page';
 // import ChangePasswordPage from './forgotpassword';
-import ChatbotPage  from './chatbot';
 const App: React.FC = () => {
   return (
     <Router>
@@ -17,10 +16,6 @@ const App: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/login-test" element={<LoginTest />} />
-          <Route path="/chatbot" element={
-                <ChatbotPage />
-            } />
-           
           <Route path="/register" element={<Register />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/auth-callback" element={<AuthCallback />} />
