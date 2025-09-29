@@ -52,7 +52,7 @@ export class ConversationService {
     }
   }
   
-  async share(conversation_id: UUID): Promise<{ message: string; shared_url?: string }> {
+  async share(conversation_id: UUID, path : string): Promise<{ message: string; shared_url?: string }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Conversation);
@@ -60,12 +60,15 @@ export class ConversationService {
         if (!existingConversation) {
           throw new NotFoundException('Conversation not found');
         }
+        if (!existingConversation.shared_url) {
         const shared_url = randomUUID();
         existingConversation.shared_url = shared_url;
+        }
+        existingConversation.shared_path = path;
         await repo.save(existingConversation);
         return {
           message: 'Conversation shared successfully',
-          data: shared_url,
+          data: existingConversation.shared_url,
         };
       });
     } catch (error) {

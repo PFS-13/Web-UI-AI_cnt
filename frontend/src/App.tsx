@@ -5,7 +5,8 @@ import { HomePage, Login, Register, Verification, AuthCallback, Dashboard, ChatP
 import styles from './App.module.css';
 import LoginTest from './LoginTest';
 import ProtectedRoute from './ProtectedRoute';
-import ChangePasswordPage from './forgotpassword';
+// import ChangePasswordPage from './forgotpassword';
+import ChatbotPage  from './chatbot';
 const App: React.FC = () => {
   return (
     <Router>
@@ -15,10 +16,10 @@ const App: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/login-test" element={<LoginTest />} />
-          <Route path="/change-password" element={
-              <ProtectedRoute>
-                <ChangePasswordPage />
-              </ProtectedRoute>
+          <Route path="/chatbot" element={
+              // <ProtectedRoute>
+                <ChatbotPage />
+              // </ProtectedRoute>
             } />
           <Route path="/register" element={<Register />} />
           <Route path="/verification" element={<Verification />} />

@@ -28,8 +28,8 @@ export class ConversationController {
     @ApiOperation({ summary: 'Create shared url for conversation' })
     @HttpCode(200)
     @Patch('v1/conversations/:conversation_id/create-share-url')
-    async shareConverasation(@Param('conversation_id') conversation_id: UUID) {
-      return await this.conversationService.share(conversation_id);
+    async shareConverasation(@Param('conversation_id') conversation_id: UUID, @Body('path')  path: string) {
+      return await this.conversationService.share(conversation_id, path);
     }
 
     @ApiOperation({ summary: 'Edit title of Conversation' })

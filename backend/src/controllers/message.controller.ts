@@ -11,7 +11,7 @@ export class MessageController {
     private messageService: MessageService,
   ) {}
     @ApiOperation({ summary: 'Get Messages by Conversation ID' })
-    @Get('v1/conversations/:conversation_id')
+    @Post('v1/conversations/:conversation_id')
     async getMessageByConversationId(@Param('conversation_id') conversation_id: UUID) {
         return await this.messageService.findByConversationId(conversation_id);
     }
@@ -22,14 +22,6 @@ export class MessageController {
     async createConversation(@Body() messageDto: createMessageDto) {
       return await this.messageService.ask(messageDto);
     }
-
-
-    // @ApiOperation({ summary: 'Edit a Message' })
-    // @ApiBody({type: createMessageDto})
-    // @Patch('v1/messages/edit/:message_id')
-    // async editMessage(@Param('message_id') message_id: number, @Body() messageDto:editMessageDto) {
-    //   return await this.messageService.edit(message_id,messageDto);
-    // }
 
     
 
