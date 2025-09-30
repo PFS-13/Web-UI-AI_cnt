@@ -62,14 +62,16 @@ class ConversationAPI {
     });
   }
 
-  async shareConversation(conversationId: string): Promise<ShareConversationResponse> {
-    return this.request<ShareConversationResponse>(`/conversation/v1/conversations/${conversationId}/create-share-url`, {
+  async shareConversation(conversation_id: string, path:string): Promise<ShareConversationResponse> {
+    return this.request<ShareConversationResponse>(`/conversation/v1/conversations/${conversation_id}/create-share-url`, {
       method: 'PATCH',
+      body: JSON.stringify({ path }),
+
     });
   }
 
-  async deleteConversation(conversationId: string): Promise<DeleteConversationResponse> {
-    return this.request<DeleteConversationResponse>(`/conversation/v1/conversations/${conversationId}/delete`, {
+  async deleteConversation(conversation_id: string): Promise<DeleteConversationResponse> {
+    return this.request<DeleteConversationResponse>(`/conversation/v1/conversations/${conversation_id}/delete`, {
       method: 'POST',
     });
   }

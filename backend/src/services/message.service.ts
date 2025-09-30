@@ -85,38 +85,32 @@ export class MessageService {
   }
 
   // --- method baru: ekstrak konteks & log ke logger (sanitized)
-  private async extractContextAndConsoleLog(messageEntity: Message) {
+  private async extractContextAndConsoleLog(message: Message) {
     const prompt = `
-You are an assistant that extracts structured context from a user's chat message in Indonesian.
-Output MUST be valid JSON and ONLY JSON (no extra commentary). The schema:
-{
-  "summary": "<very short Indonesian summary, max 30 words>"
-}
-User message:
-"""${messageEntity.content}"""
-Please produce the JSON only.
-`;
+    You are an assistant that extracts structured context from a user's chat message in Indonesian.
+    Output MUST be valid JSON and ONLY JSON (no extra commentary). The schema:
+    {
+      "summary": "<very short Indonesian summary, max 30 words>"
+    }
+    User message:
+    """${message.content}"""
+    Please produce the JSON only.
+    `;
 
     let contextJson: any = null;
     try {
       const raw = await this._callModelRaw(prompt, 0.0, 200);
       const jsonText = this._extractJsonFromText(raw);
       contextJson = JSON.parse(jsonText);
-      if (!contextJson.summary) contextJson.summary = this._shortSummary(messageEntity.content);
+      if (!contextJson.summary) contextJson.summary = this._shortSummary(message.content);
     } catch (e) {
       this.logger.warn('Failed to extract structured context via model, using local fallback: ' + (e?.message ?? e));
       contextJson = {
-        summary: this._shortSummary(messageEntity.content),
+        summary: this._shortSummary(message.content),
       };
     }
-
-    // Sanitize summary before logging/storing (strip long PII-looking tokens)
-    const sanitizedSummary = String(contextJson.summary).replace(/(\+62|0)\d{6,}/g, '[redacted-phone]').slice(0, 200);
-
     try {
-      this.logger.log(`Extracted context for message ${messageEntity.id}: ${sanitizedSummary}`);
-      // Ensure conversationService.edit signature matches: edit(conversationId, newTitle)
-      await this.conversationService.edit(messageEntity.conversation_id, contextJson.summary);
+      await this.conversationService.edit(message.conversation_id, contextJson.summary);
     } catch (e) {
       this.logger.error('Failed to change conversation title ' + (e?.message ?? e));
     }
@@ -135,7 +129,11 @@ Please produce the JSON only.
       } catch (e) {
         this.logger.error('Failed during context extraction/logging: ' + (e?.message ?? e));
       }
-    }
+    } 
+
+    this.conversationService.updatedTimestamp(dto.conversation_id).catch(e => {
+      this.logger.error('Failed to update conversation timestamp: ' + (e?.message ?? e));
+    });
 
     // ambil history (recent) - ambil fields yang dibutuhkan saja
     const recent = await this.messageRepo.find({
@@ -147,7 +145,7 @@ Please produce the JSON only.
     const historyEntitiesAll = recent.reverse();
 
     const historyEntities = historyEntitiesAll.filter(h => {
-      if (!h.content) return false;
+      if (!h.content) return false; 
       const low = h.content.trim().toLowerCase();
       if (low.startsWith('(fallback') || low.includes('(fallback gemini)')) return false;
       return true;

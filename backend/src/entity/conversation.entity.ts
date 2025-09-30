@@ -30,6 +30,5 @@ export class Conversation {
   created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamp', default: () => 'now()' })
-  last_message: Date;
-
+  last_updated: Date;
 }

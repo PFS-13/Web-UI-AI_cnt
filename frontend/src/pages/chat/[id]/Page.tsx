@@ -34,9 +34,11 @@ const ChatIdPage: React.FC = () => {
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [lastChat,setLastChat] = useState<number | null>(null);
-   const [chatHistory, setChatHistory] = useState<
+  const [chatHistory, setChatHistory] = useState<
         Array<{ id: string; title: string; isActive: boolean }>
       >([]);
+  const [sharedUrl, setSharedUrl] = useState("");
+  const [path,setPath] = useState<string>('');
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -73,7 +75,10 @@ const ChatIdPage: React.FC = () => {
         try {
           const response = await messageAPI.getMessages(id);
           const firstPath = response[0];
-
+          const pathString = firstPath.path_ids.toString();
+          setPath(pathString);
+          console.log("path string:", pathString);
+          console.log("uwu", path);
           const messages: ChatMessage[] = firstPath.path_messages.map(msg => ({
             id: msg.id,
             content: msg.content,
@@ -295,6 +300,7 @@ const ChatIdPage: React.FC = () => {
   };
 
   const handleShareClick = () => {
+    setSharedUrl("");
     setIsShareModalOpen(true);
   };
 
@@ -302,9 +308,13 @@ const ChatIdPage: React.FC = () => {
     setIsShareModalOpen(false);
   };
 
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
+  const createSharedUrl = async () => {
+    try { 
+      const response = await conversationAPI.shareConversation(id!, path);
+      const url = import.meta.env.VITE_FRONTEND_URL;
+      const shared_url = `${url}/share/${response.shared_url}`;
+      setSharedUrl(shared_url);
+      await navigator.clipboard.writeText(shared_url);
       alert('Link copied to clipboard!');
     } catch (err) {
       console.error('Failed to copy: ', err);
@@ -773,9 +783,9 @@ const ChatIdPage: React.FC = () => {
               <p className={styles.privacyNotice}>Your name, custom instructions, and any messages you add after sharing stay private.</p>
               <div className={styles.shareLinkContainer}>
                 <div className={styles.shareLinkDisplay}>
-                  https://webui-ai.com/share/...
+                  { sharedUrl || "https://webui.com/share/…"}
                 </div>
-                <button className={styles.createLinkButton} onClick={copyToClipboard}>
+                <button className={styles.createLinkButton} onClick={createSharedUrl}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M10.59 13.41c.41.39.41 1.03 0 1.42-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.982 2.982 0 0 0 0-4.24 2.982 2.982 0 0 0-4.24 0l-3.53 3.53a2.982 2.982 0 0 0 0 4.24zm2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.42l-.47.48a2.982 2.982 0 0 0 0 4.24 2.982 2.982 0 0 0 4.24 0l3.53-3.53a2.982 2.982 0 0 0 0-4.24z"/>
                   </svg>

@@ -14,7 +14,7 @@ export interface CreateMessagePayload {
   content: string;
   is_user: boolean;
   is_attach_file?: boolean;
-  edited_from_message_id?: number;
+  edited_from_message_id?: number | null;
   parent_message_id?: number | null;
 }
 

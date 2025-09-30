@@ -26,7 +26,7 @@ export class ConversationService {
   }
 
   async findAllByUserId(user_id: UUID): Promise<Conversation[]> {
-    return await this.conversationsRepository.find({ where: { user_id } });
+    return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }
 
   async create(conversation: createConversationDto,): Promise<{ message?: string; conversation_id?: UUID; }> {
@@ -50,7 +50,7 @@ export class ConversationService {
     }
   }
   
-  async share(conversation_id: UUID, path : string): Promise<{ message: string; shared_url?: string }> {
+  async share(conversation_id: UUID, path : string): Promise<{ message?: string; shared_url?: string }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Conversation);
@@ -65,8 +65,7 @@ export class ConversationService {
         existingConversation.shared_path = path;
         await repo.save(existingConversation);
         return {
-          message: 'Conversation shared successfully',
-          data: existingConversation.shared_url,
+          shared_url: existingConversation.shared_url,
         };
       });
     } catch (error) {
@@ -113,4 +112,8 @@ export class ConversationService {
     return { message: `Failed to delete conversation: ${error.message}` };
   }
 }
+
+async updatedTimestamp(conversation_id: UUID): Promise<void> {
+    await this.conversationsRepository.update(conversation_id, { last_updated: new Date() });
+  }
 }
