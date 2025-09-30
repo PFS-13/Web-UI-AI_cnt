@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
-import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const InputPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ const InputPassword: React.FC = () => {
   
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
   const location = useLocation();
 
   // Load email from state on component mount
@@ -24,10 +23,7 @@ const InputPassword: React.FC = () => {
     if (emailFromState) {
       setEmail(emailFromState);
     } else {
-      // For testing purposes, set a default email
-      setEmail('test@example.com');
-      // Uncomment the line below to redirect to login if no email provided
-      // navigate('/login');
+      navigate('/login');
     }
   }, [location.state, navigate]);
 
@@ -62,29 +58,8 @@ const InputPassword: React.FC = () => {
     }
 
     try {
-      // Simulate API call untuk login manual
-      console.log(`Login attempt for: ${email}`);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock user data setelah login berhasil
-      const mockUser = {
-        id: 'user-id',
-        email: email,
-        username: email.split('@')[0],
-        is_active: true,
-        provider: 'manual' as const,
-      };
-      
-      const mockToken = 'mock-jwt-token';
-      
-      // Set user data
-      setUser(mockUser, mockToken);
-      
-      // Redirect ke dashboard atau tell-us-about-you
+      await authAPI.login(email, password);
       navigate('/dashboard');
-      
     } catch (error) {
       console.error('Login error:', error);
       setPasswordError('Invalid email or password. Please try again.');

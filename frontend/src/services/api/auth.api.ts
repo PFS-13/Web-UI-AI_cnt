@@ -49,6 +49,8 @@ class AuthAPI {
     return this.request('/auth/v1/me', { method: 'GET' });
   }
 
+
+
   async checkEmail(email: string): Promise<CheckEmailResponse> {
     return this.request<CheckEmailResponse>(`/auth/v1/check-email?email=${encodeURIComponent(email)}`, {
       method: 'GET',
@@ -59,6 +61,20 @@ class AuthAPI {
     return this.request<AuthResponse>('/auth/v1/register', {
       method: 'POST',
       body: JSON.stringify(credentials),
+    });
+  }
+
+  async changeUsername(username: string, user_id: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>(`/auth/v1/users/${user_id}/change-username`, {
+      method: 'PATCH',
+      body: JSON.stringify({ username }),
+    });
+  }
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/v1/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
     });
   }
 

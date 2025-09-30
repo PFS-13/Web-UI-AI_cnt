@@ -141,6 +141,13 @@ export class AuthController {
     return await this.authService.changePassword(user_id, new_password);
   }
 
+  @Patch('v1/users/:user_id/change-username')
+  @ApiOperation({ summary: 'Change user username' })
+  async changeUsername(@Param('user_id') user_id: UUID, @Body('username') username: string) {
+    return await this.authService.changeUsername(user_id, username);
+  }
+
+
 @Post('logout')
 logout(@Res({ passthrough: true }) res: Response) {
   res.clearCookie('Authentication');

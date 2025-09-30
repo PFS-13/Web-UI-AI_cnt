@@ -44,7 +44,7 @@ const Login: React.FC = () => {
       if (response.provider == 'google') {
         window.location.href = `http://localhost:3001/auth/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
-        // Implement manual login here
+        navigate('/input-password', { state: { email } });
       } else {
         navigate('/register', { state: { email } });
       }
