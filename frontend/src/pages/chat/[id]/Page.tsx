@@ -44,7 +44,6 @@ const ChatIdPage: React.FC = () => {
       try {
         const userData = await authAPI.getMe();
         setUser(userData);
-        console.log('Current user:', userData);
       } catch (error) {
         console.error('Failed to fetch user:', error);
       }
@@ -77,8 +76,6 @@ const ChatIdPage: React.FC = () => {
           const firstPath = response[0];
           const pathString = firstPath.path_ids.toString();
           setPath(pathString);
-          console.log("path string:", pathString);
-          console.log("uwu", path);
           const messages: ChatMessage[] = firstPath.path_messages.map(msg => ({
             id: msg.id,
             content: msg.content,
@@ -87,7 +84,6 @@ const ChatIdPage: React.FC = () => {
           setChatMessages(messages);
           setLastChat(messages.length > 0 ? messages[messages.length - 1].id! : null);
 
-          console.log('Fetched messages:', messages);
         } catch (error) {
           console.error('Failed to fetch messages:', error);
         }
@@ -140,7 +136,6 @@ const ChatIdPage: React.FC = () => {
         parent_message_id: lastChat,
         edited_from_message_id: undefined
         });
-      console.log('AI response:', response);
       setTimeout(() => {
         const aiMessage: ChatMessage = { 
           content: response.reply.message,
@@ -159,7 +154,6 @@ const ChatIdPage: React.FC = () => {
   
 
   const handleAttachClick = () => {
-    console.log('Attach button clicked, current state:', isAttachDropdownOpen);
     
     if (!isAttachDropdownOpen && attachContainerRef.current) {
       const buttonRect = attachContainerRef.current.getBoundingClientRect();
@@ -194,14 +188,12 @@ const ChatIdPage: React.FC = () => {
   };
 
   const handleAttachOptionClick = (option: string) => {
-    console.log('Selected option:', option);
     if (option === 'photos') {
       fileInputRef.current?.click();
     }
     // TODO: Implement other options
     setIsAttachDropdownOpen(false);
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
