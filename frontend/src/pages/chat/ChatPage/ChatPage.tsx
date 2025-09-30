@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, ChatInput } from '../../../components/chat';
-import { Button, Input } from '../../../components/common';
 import { useAuth } from '../../../hooks';
 import type { Message, Conversation } from '../../../types/chat.types';
 import { conversationAPI } from '../../../services/api';
@@ -11,7 +10,6 @@ const ChatPage: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -31,13 +29,10 @@ const ChatPage: React.FC = () => {
     if (!user) return;
     
     try {
-      setIsLoading(true);
       const data = await conversationAPI.getConversationsByUserId(user.id);
       setConversations(data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -55,12 +50,18 @@ const ChatPage: React.FC = () => {
     
     try {
       const response = await conversationAPI.createConversation({
-        title: 'New Conversation',
         user_id: user.id,
       });
       
-      if (response.data) {
-        const newConversation = response.data;
+      if (response.conversation_id) {
+        const newConversation: Conversation = {
+          conversation_id: response.conversation_id,
+          title: 'New Conversation',
+          user_id: user.id,
+          last_message: '',
+          messages: [],
+          created_at: new Date().toISOString(),
+        };
         setConversations(prev => [newConversation, ...prev]);
         setCurrentConversation(newConversation);
         setMessages([]);
@@ -102,39 +103,6 @@ const ChatPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to send message:', error);
       setIsTyping(false);
-    }
-  };
-
-  const handleDeleteConversation = async (conversationId: string) => {
-    try {
-      await conversationAPI.deleteConversation(conversationId);
-      setConversations(prev => prev.filter(c => c.conversation_id !== conversationId));
-      
-      if (currentConversation?.conversation_id === conversationId) {
-        setCurrentConversation(null);
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
-    }
-  };
-
-  const handleEditConversation = async (conversation: Conversation) => {
-    try {
-      await conversationAPI.editConversation({
-        conversation_id: conversation.conversation_id,
-        title: conversation.title,
-      });
-      
-      setConversations(prev => 
-        prev.map(c => 
-          c.conversation_id === conversation.conversation_id 
-            ? conversation 
-            : c
-        )
-      );
-    } catch (error) {
-      console.error('Failed to edit conversation:', error);
     }
   };
 

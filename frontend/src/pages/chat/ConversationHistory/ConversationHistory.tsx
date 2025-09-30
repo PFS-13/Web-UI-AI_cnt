@@ -4,7 +4,7 @@ import { Button, Input } from '../../../components/common';
 import { useAuth } from '../../../hooks';
 import type { Conversation } from '../../../types/chat.types';
 import { conversationAPI } from '../../../services/api';
-import { formatRelativeTime, truncateText } from '../../../utils/helpers';
+import { formatRelativeTime } from '../../../utils/helpers';
 import styles from './ConversationHistory.module.css';
 
 const ConversationHistory: React.FC = () => {
@@ -96,12 +96,18 @@ const ConversationHistory: React.FC = () => {
     
     try {
       const response = await conversationAPI.createConversation({
-        title: 'New Conversation',
         user_id: user.id,
       });
       
-      if (response.data) {
-        const newConversation = response.data;
+      if (response.conversation_id) {
+        const newConversation: Conversation = {
+          conversation_id: response.conversation_id,
+          title: 'New Conversation',
+          user_id: user.id,
+          last_message: '',
+          messages: [],
+          created_at: new Date().toISOString(),
+        };
         setConversations(prev => [newConversation, ...prev]);
         setSelectedConversation(newConversation);
       }

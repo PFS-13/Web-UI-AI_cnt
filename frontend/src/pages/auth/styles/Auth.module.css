@@ -25,7 +25,7 @@
   font-size: 2rem;
   font-weight: 700;
   color: #1f2937;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 1rem 0;
   text-align: center;
 }
 
@@ -37,10 +37,15 @@
   line-height: 1.5;
 }
 
+.emailText {
+  font-weight: 600;
+  color: #1f2937;
+}
+
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .inputGroup {
@@ -70,6 +75,22 @@
 
 .formInput.password {
   padding-right: 3rem;
+}
+
+.formInput[type="date"] {
+  color-scheme: light;
+}
+
+.formInput[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  margin-right: 2px;
+  opacity: 0.6;
+  filter: invert(0.5);
+}
+
+.formInput[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .formInput.emailDisabled {
@@ -242,7 +263,6 @@
 
 .termsContainer {
   text-align: center;
-  margin-top: 2rem;
 }
 
 .termsLink {
@@ -260,6 +280,55 @@
   color: #d1d5db;
   margin: 0 0.5rem;
   font-size: 0.75rem;
+}
+
+.termsText {
+  color: #6b7280;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.linkContainer {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.textButton {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.textButton:hover {
+  color: #374151;
+}
+
+.forgotPasswordContainer {
+  text-align: left;
+  margin: 0rem 0 0rem 0;
+  width: 83.33%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.forgotPasswordLink {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  padding: 0;
+}
+
+.forgotPasswordLink:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 

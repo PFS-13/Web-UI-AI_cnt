@@ -1,4 +1,4 @@
-import { validateEmail, validatePassword, validateUsername } from './helpers';
+import { validateEmail, validatePassword } from './helpers';
 
 export interface ValidationResult {
   isValid: boolean;

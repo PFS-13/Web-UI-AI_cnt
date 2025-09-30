@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar/Sidebar';
+import { UserProfileInfo } from '../../components/common';
 import styles from './Dashboard.module.css';
 import { conversationAPI } from '../../services';
 
@@ -424,6 +425,9 @@ const Dashboard: React.FC = () => {
           {chatMessages.length === 0 ? (
             <div className={styles.welcomeMessage}>
               <h2>How can I help, {user?.username}</h2>
+              <div className={styles.profileSection}>
+                <UserProfileInfo />
+              </div>
             </div>
           ) : (
             <div ref={messagesContainerRef} className={styles.messagesContainer}>

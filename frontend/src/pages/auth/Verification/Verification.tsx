@@ -14,7 +14,7 @@ const Verification: React.FC = () => {
 
   const codeInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { } = useAuth();
+  const { setUser } = useAuth();
   const location = useLocation();
   useEffect(() => {
     const email = location.state.email || {};
@@ -50,7 +50,21 @@ const Verification: React.FC = () => {
     setIsLoading(true);
     try {
       await authAPI.verifyOtp({email, code, token_type: "auth"});
-      navigate('/dashboard');
+      
+      // Setelah verifikasi berhasil, dapatkan user data dan token
+      try {
+        const userData = await authAPI.getMe();
+        const token = sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
+        
+        if (userData && token) {
+          setUser(userData, token);
+        }
+      } catch (userError) {
+        console.error('Error getting user data:', userError);
+        // Tetap lanjutkan ke halaman berikutnya meskipun ada error
+      }
+      
+      navigate('/tell-us-about-you');
     } catch (err : any) {
       setCodeError(err.message || 'Failed to verify code. Please try again.');
     } finally{

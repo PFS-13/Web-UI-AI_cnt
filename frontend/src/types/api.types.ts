@@ -5,10 +5,16 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-export interface ApiError {
-  message: string;
-  status: number;
-  details?: any;
+export class ApiError extends Error {
+  public status: number;
+  public details?: any;
+  
+  constructor(message: string, status: number = 500, details?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
 }
 
 export interface PaginatedResponse<T> {
