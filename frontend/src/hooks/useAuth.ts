@@ -52,7 +52,7 @@ export const useAuth = () => {
     try {
       // For now, we'll use Google OAuth
       // In the future, implement local login
-      const googleUrl = authAPI.getGoogleAuthUrl(credentials.email);
+      const googleUrl = await authAPI.getGoogleAuthUrl(credentials.email);
       window.location.href = googleUrl;
     } catch (error) {
       setAuthState(prev => ({
@@ -84,11 +84,15 @@ export const useAuth = () => {
     }
   }, []);
 
-  const verifyOtp = useCallback(async (userId: string, otp: string) => {
+  const verifyOtp = useCallback(async (email: string, code: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await authAPI.verifyOtp({ user_id: userId, otp });
+      const response = await authAPI.verifyOtp({ 
+        email, 
+        code, 
+        token_type: 'auth' as const 
+      });
       setAuthState(prev => ({
         ...prev,
         isLoading: false,

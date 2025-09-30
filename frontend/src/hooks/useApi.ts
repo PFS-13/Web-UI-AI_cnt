@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { ApiError } from '../types/api.types';
+import { ApiError } from '../types/api.types';
 
 export const useApi = <T = any>() => {
   const [data, setData] = useState<T | null>(null);

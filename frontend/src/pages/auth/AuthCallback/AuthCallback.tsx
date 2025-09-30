@@ -38,9 +38,9 @@ const AuthCallback: React.FC = () => {
         setStatus('success');
         setMessage('Login successful! Redirecting...');
         
-        // Redirect to dashboard after 2 seconds
+        // Redirect to tell us about you page after 2 seconds
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/tell-us-about-you');
         }, 2000);
         
       } catch (error) {

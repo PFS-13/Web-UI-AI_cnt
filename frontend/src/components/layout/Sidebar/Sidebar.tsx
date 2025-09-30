@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-interface SidebarProps {
+
+export interface SidebarProps {
   isMinimized: boolean;
   onToggle: () => void;
   user?: {
@@ -14,7 +15,7 @@ interface SidebarProps {
 }
 
 
-const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, activated_conversation, chatHistory }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHistory }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '200px' });

@@ -352,6 +352,11 @@
   color: white;
 }
 
+.profileSection {
+  margin-top: 2rem;
+  max-width: 400px;
+}
+
 /* Input Form */
 .inputForm {
   width: 100%;

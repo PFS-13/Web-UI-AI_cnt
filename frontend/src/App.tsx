@@ -1,7 +1,7 @@
 // src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { HomePage, Login, Register, Verification, AuthCallback, Dashboard, ChatPage, ConversationHistory } from './pages';
+import { HomePage, Login, Register, Verification, AuthCallback, TellUsAboutYou, ResetPassword, InputPassword, Dashboard, ChatPage, ConversationHistory } from './pages';
 import styles from './App.module.css';
 import LoginTest from './LoginTest';
 import ProtectedRoute from './ProtectedRoute';
@@ -19,6 +19,9 @@ const App: React.FC = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/auth-callback" element={<AuthCallback />} />
+          <Route path="/tell-us-about-you" element={<TellUsAboutYou />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/input-password" element={<InputPassword />} />
           <Route path="/dashboard"
             element={
               <ProtectedRoute>

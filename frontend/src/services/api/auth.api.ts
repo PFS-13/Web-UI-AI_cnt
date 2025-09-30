@@ -83,7 +83,7 @@ class AuthAPI {
     });
   }
 
-  async getGoogleAuthUrl(email?: string): Promise<String> {
+  async getGoogleAuthUrl(email?: string): Promise<string> {
     const baseUrl = `${API_BASE_URL}/auth/google`;
     return email ? `${baseUrl}?email=${encodeURIComponent(email)}` : baseUrl;
   }

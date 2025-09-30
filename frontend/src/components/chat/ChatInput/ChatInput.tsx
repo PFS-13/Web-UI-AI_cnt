@@ -24,7 +24,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<number>();
+  const typingTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     return () => {

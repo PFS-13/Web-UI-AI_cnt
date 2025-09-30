@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { authAPI } from "./services";
+import { hasCompletedOnboarding } from "./utils/userProfile";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -35,6 +36,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     };
   }, [id]);
 
+  // Check if user has completed onboarding
+  const hasCompletedOnboardingLocal = () => {
+    return hasCompletedOnboarding();
+  };
+
   // Loading state while mengecek autentikasi
   if (loading) {
     return (
@@ -49,6 +55,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Jika authenticated -> render children (halaman yang diproteksi)
+  // Jika authenticated tapi belum selesai onboarding -> redirect ke tell-us-about-you
+  if (isAuthenticated && !hasCompletedOnboardingLocal()) {
+    return <Navigate to="/tell-us-about-you" replace />;
+  }
+
+  // Jika authenticated dan sudah selesai onboarding -> render children (halaman yang diproteksi)
   return <>{children}</>;
 }
