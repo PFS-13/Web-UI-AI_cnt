@@ -22,11 +22,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
 
-
-
-
   const handleNewChat = () => {
-    navigate('/chat');
+    navigate('/dashboard');
   };
 
   const handleSearchClick = () => {
@@ -43,8 +40,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
     // Navigate to upgrade page or show upgrade modal
     // TODO: Implement upgrade functionality
   };
-
-
 
   const handleProfileClick = () => {
     if (!isProfileDropdownOpen && profileSectionRef.current) {
@@ -117,22 +112,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
         <button 
           className={`${styles.toggleButton} ${isMinimized ? styles.toggleButtonMinimized : ''}`}
           onClick={onToggle}
-          title={isMinimized ? "Expand sidebar" : "Minimize sidebar"}
-        >
+          title={isMinimized ? "Expand sidebar" : "Minimize sidebar"}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
           </svg>
         </button>
       </div>
-
       {/* Sticky Buttons Container */}
       <div className={styles.stickyButtons}>
         {/* New Chat Button */}
         <button 
           className={`${styles.sidebarButton} ${isMinimized ? styles.sidebarButtonMinimized : ''}`} 
           onClick={handleNewChat}
-          title={isMinimized ? "New chat" : ""}
-        >
+          title={isMinimized ? "New chat" : ""}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
           </svg>
@@ -176,7 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
               {chatHistory.map((chat) => (
                 <button
                   key={chat.id}
-                  className={`${styles.sidebarButton} ${chat.isActive ? styles.sidebarButtonActive : ''}`}
+                  className={`${styles.sidebarButton} ${chat.id == activated_conversation ? styles.sidebarButtonActive : ''}`}
                   onClick={() => handleChatClick(chat.id)}
                 >
                   <span>{chat.title}</span>

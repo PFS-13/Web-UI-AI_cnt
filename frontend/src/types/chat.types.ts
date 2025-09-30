@@ -12,7 +12,7 @@ export interface Conversation {
   user_id: string;
   shared_url?: string;
   created_at: string;
-  last_message: string;
+  last_updated: string;
   messages?: Message[];
 }
 
@@ -43,10 +43,10 @@ export interface EditConversationResponse {
 }
 
 export interface ShareConversationResponse {
-  message: string;
-  data?: string;
+  message?: string;
+  shared_url?: string;
 }
 
 export interface DeleteConversationResponse {
-  message: string;
+  message?: string;
 }

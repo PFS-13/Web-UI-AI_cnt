@@ -5,14 +5,14 @@ import styles from './Dashboard.module.css';
 import { conversationAPI } from '../../services';
 
 interface ChatMessage {
-  id: string;
+  id?: number
   content: string;
-  isUser: boolean;
-  timestamp: Date;
+  is_user: boolean;
 
 }
 import { authAPI } from '../../services';
 import { useNavigate } from 'react-router';
+import { messageAPI } from '../../services/api/message.api';
 
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
-  const [chatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
@@ -99,9 +99,30 @@ const Dashboard: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || uploadedImages.length > 0) {
-      const response = await conversationAPI.createConversation({ user_id: user.id });
-      
-      Navigate(`/c/${response.conversation_id}`);
+      const userMessage: ChatMessage = {
+        content: inputValue.trim(),
+        is_user: true,
+      };
+      setInputValue('');
+      setChatMessages(prev => [...prev, userMessage]);
+      const conv = await conversationAPI.createConversation({ user_id: user.id });
+      const response = await messageAPI.sendMessage({ 
+        content: userMessage.content,
+        conversation_id: conv.conversation_id!,
+        is_user: true,
+        is_attach_file: uploadedImages.length > 0,
+        parent_message_id: null,
+        edited_from_message_id: null
+        });
+      // console.log('AI response:', response);
+      setTimeout(() => {
+        const aiMessage: ChatMessage = { 
+          content: response.reply.message,
+          is_user: false,
+        };
+        setChatMessages(prev => [...prev, aiMessage]);
+      }, 1000);
+      Navigate(`/c/${conv.conversation_id}`);
     }
   };
 
@@ -433,11 +454,11 @@ const Dashboard: React.FC = () => {
             <div ref={messagesContainerRef} className={styles.messagesContainer}>
               <div className={styles.messagesWrapper}>
                 {chatMessages.map((message) => (
-                <div key={message.id} className={`${styles.message} ${message.isUser ? styles.userMessage : styles.aiMessage}`}>
+                <div key={message.id} className={`${styles.message} ${message.is_user ? styles.userMessage : styles.aiMessage}`}>
                   <div className={styles.messageContent}>
                     {message.content}
                   </div>
-                  {!message.isUser && (
+                  {!message.is_user && (
                     <div className={styles.messageActions}>
                       <button className={styles.actionButton}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
