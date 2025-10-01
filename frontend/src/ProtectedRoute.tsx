@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { authAPI } from "./services";
-import { hasCompletedOnboarding } from "./utils/userProfile";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -10,56 +9,52 @@ type ProtectedRouteProps = {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<any>(null);
   const location = useLocation();
   const { id } = useParams();
-
   useEffect(() => {
-    let mounted = true;
-
+    let ignore = false;
     const checkAuth = async () => {
       try {
         const currentUser = await authAPI.getMe();
-        const ok = !!currentUser && Object.keys(currentUser).length > 0 && currentUser.is_active;
-        if (mounted) setIsAuthenticated(ok);
-      } catch (err) {
-        if (mounted) setIsAuthenticated(false);
+        if (!ignore) setUser(currentUser);
+      } catch {
+        if (!ignore) setUser(null);
       } finally {
-        if (mounted) setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
 
     checkAuth();
-
     return () => {
-      mounted = false;
+      ignore = true;
     };
   }, [id]);
 
-  // Check if user has completed onboarding
-  const hasCompletedOnboardingLocal = () => {
-    return hasCompletedOnboarding();
-  };
-
-  // Loading state while mengecek autentikasi
+console.log("ProtectedRoute - user:", user, "loading:", loading);
+  // 🔄 Loading state (rapih + spinner)
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Checking authentication...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center text-gray-600">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-lg font-medium">Checking authentication...</p>
       </div>
     );
   }
 
-  // Jika belum authenticated -> redirect ke /login (simpan lokasi awal di state)
-  if (!isAuthenticated) {
+  // 🔒 Jika belum login → redirect ke /login
+  if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
-
-  // Jika authenticated tapi belum selesai onboarding -> redirect ke tell-us-about-you
-  if (isAuthenticated && !hasCompletedOnboardingLocal()) {
-    return <Navigate to="/tell-us-about-you" replace />;
+  // 📲 Jika sudah login tapi belum OTP verified → /verify-otp
+  if (!user.is_active) {
+    return <Navigate to="/verify-otp" replace />;
   }
+  // 📝 Jika sudah aktif tapi belum isi username → /tell-us-about-you
+  // if (!!user.username) {
+  //   return <Navigate to="/tell-us-about-you" replace />;
+  // }
 
-  // Jika authenticated dan sudah selesai onboarding -> render children (halaman yang diproteksi)
+  // ✅ Jika semua beres → render children
   return <>{children}</>;
 }

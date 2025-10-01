@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
+import { authAPI } from '../../../services';
 
 export interface SidebarProps {
   isMinimized: boolean;
@@ -56,6 +57,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
   const handleProfileDropdownItem = (_action: string) => {
     setIsProfileDropdownOpen(false);
     // TODO: Implement different actions based on action parameter
+    if (_action === 'logout') {
+      authAPI.logout().then(() => {
+        navigate('/login');
+      });
+    }
   };
 
   const handleChatClick = (chatId: string) => {

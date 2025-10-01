@@ -59,7 +59,7 @@ export class AuthController {
   }
   // --------------- Login Manual --------------- 
   // Pengecekan Email
-  @Get('v1/check-email')
+  @Post('v1/check-email')
   @HttpCode(200)
   @ApiOperation({ summary: 'Check email that user inputed' })
     @ApiBody({
@@ -74,7 +74,7 @@ export class AuthController {
       required: ['email'],
     },
   })
-  async checkEmail(@Query('email') email: string) {
+  async checkEmail(@Body('email') email: string) {
     const provider = await this.authService.checkEmail(email);
     return { provider };
   }
@@ -83,8 +83,18 @@ export class AuthController {
   @Post('v1/register')
   @ApiOperation({ summary: 'Register new user' })
   @ApiBody({type : AuthDto})
-  async register(@Body() auth_dto: AuthDto) {
-    return await this.authService.register(auth_dto);
+  async register(
+    @Body() auth_dto: AuthDto,
+    @Res({ passthrough: true }) res: Response) {
+    const { accessToken, user_id } = await this.authService.register(auth_dto);
+    // TODO: change secure to true in production
+    res.cookie('Authentication', accessToken, {
+      httpOnly: true,
+      secure: false, 
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 15
+    });
+    return { user_id };
   }
 
   // Login Manual
@@ -134,7 +144,6 @@ export class AuthController {
     const resendEmail =  await this.authService.resendEmail(email, token_type);
     return {resendEmail}
   }
-
   @Patch('v1/users/:user_id/change-password')
   @ApiOperation({ summary: 'Change user password' })
   async changePassword(@Param('user_id') user_id: UUID, @Body('new_password') new_password: string) {
@@ -148,7 +157,7 @@ export class AuthController {
   }
 
 
-@Post('logout')
+@Post('v1/logout')
 logout(@Res({ passthrough: true }) res: Response) {
   res.clearCookie('Authentication');
   return { message: 'Logged out' };

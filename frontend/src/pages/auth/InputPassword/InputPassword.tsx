@@ -166,7 +166,7 @@ const InputPassword: React.FC = () => {
             <div className={styles.forgotPasswordContainer}>
               <button 
                 type="button" 
-                onClick={() => navigate('/reset-password')} 
+                onClick={() => navigate('/reset-password', { state: { email } })} 
                 className={styles.forgotPasswordLink}
               >
                 Forgot password?

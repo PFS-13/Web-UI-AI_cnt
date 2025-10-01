@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate,useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import styles from '../styles/Auth.module.css';
@@ -7,8 +7,17 @@ import styles from '../styles/Auth.module.css';
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const email = 'polbanmlbbcommunity@gmail.com'; // Hardcoded for testing
-
+  const [email, setEmail] = useState(''); // Ganti dengan email pengguna yang sesuai
+  const location = useLocation();
+  useEffect(() => {
+      const emailFromState = location.state?.email || '';
+      if (emailFromState) {
+        setEmail(emailFromState);
+      } else {
+        navigate('/login');
+      }
+    }, [location.state, navigate]);
+    
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -16,10 +25,8 @@ const ResetPassword: React.FC = () => {
     try {
       // Simulate API call untuk reset password
       console.log(`Reset password request for: ${email}`);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+
       
-      // Redirect ke login setelah berhasil
-      navigate('/login');
     } catch (error) {
       console.error('Reset password error:', error);
     } finally {

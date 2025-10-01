@@ -11,7 +11,6 @@ import { AuthDto,VerifyOtpDto} from '../dtos/auth.dto';
 import { createTransport, Transporter } from 'nodemailer';
 import * as bcrypt from 'bcrypt';
 import {UUID,randomInt}  from 'crypto';
-import { log } from 'console';
 
 
 @Injectable()
@@ -88,7 +87,6 @@ async createUser({ email, password }: AuthDto): Promise<User> {
       throw new ConflictException('Email already in use');
     }
     //! Hash password
-    console.log('Creating user with password:', password);
     const hashed_password = await this.hashPassword(password);
     //! Simpan user baru
     const new_user = manager.create(User, {
@@ -100,19 +98,19 @@ async createUser({ email, password }: AuthDto): Promise<User> {
   });
 }
 
-  async register({ email, password }: AuthDto): Promise<{user_id: string }> {
+  async register({ email, password }: AuthDto): Promise<{user_id: string, accessToken: any}> {
     const new_user = await this.createUser({ email, password });
     await this.createTokenSendEmail(new_user.id, TokenType.AUTH, new_user.email);
-    return {
-      user_id: new_user.id,
-    };
+    const payload = { email: new_user.email, sub: new_user.id }; 
+    const accessToken = this.jwtService.sign(payload);
+    return { accessToken, user_id: new_user.id };
   }
-   async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<void> {
+  
+  async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<void> {
   const user = await this.usersService.findByEmail(email);
   if (!user) {
     throw new NotFoundException('Email Not found');
   }
-
   await this.tokenService.verifyCodeAndDelete(user.id, token_type, code);
   if (token_type === TokenType.AUTH) {
     await this.usersService.activate(user.id);
@@ -208,7 +206,7 @@ async createUser({ email, password }: AuthDto): Promise<User> {
 
   async resendEmail(email: string, token_type: TokenType) {
     return await this.dataSource.transaction(async (manager) => {
-      const user = await this.usersService.findByEmail(email, manager);
+      const user = await this.usersService.findByEmail(email);
       if (!user) {
         throw new NotFoundException("Email not found");
       }

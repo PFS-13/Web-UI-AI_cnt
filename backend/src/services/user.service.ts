@@ -12,10 +12,9 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async findByEmail(email: string, manager?: EntityManager) {
-      const repo = manager ? manager.getRepository(User) : this.usersRepository;
-      return repo.findOne({ where: { email } });
-    }
+  async findByEmail(email: string) {
+  return await this.usersRepository.findOne({ where: { email } });
+}
 
   async findById(id: UUID, manager?:EntityManager): Promise<User | null> {
       const repo = manager ? manager.getRepository(User) : this.usersRepository;
