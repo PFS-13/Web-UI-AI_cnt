@@ -106,15 +106,19 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     return { accessToken, user_id: new_user.id };
   }
   
-  async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<void> {
+  async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<{message?: string, user_id?: UUID}> {
   const user = await this.usersService.findByEmail(email);
   if (!user) {
     throw new NotFoundException('Email Not found');
   }
   await this.tokenService.verifyCodeAndDelete(user.id, token_type, code);
+
   if (token_type === TokenType.AUTH) {
     await this.usersService.activate(user.id);
   }
+    return {
+      user_id: user.id
+    };
 }
 
   async validateUser(loginDto: AuthDto): Promise<any> {

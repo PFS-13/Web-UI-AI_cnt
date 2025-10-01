@@ -3,6 +3,7 @@ import { useNavigate,useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -23,9 +24,8 @@ const ResetPassword: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call untuk reset password
-      console.log(`Reset password request for: ${email}`);
-
+      await authAPI.resendEmail(email, 'forgot_password');
+      navigate('/verification', { state: { email, purpose: 'forgot_password' } });
       
     } catch (error) {
       console.error('Reset password error:', error);

@@ -45,6 +45,7 @@ export interface VerifyOtpRequest {
 
 export interface VerifyOtpResponse {
   message: string;
+  user_id?: string;
 }
 
 export const TokenType = {

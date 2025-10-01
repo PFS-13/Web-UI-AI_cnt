@@ -122,6 +122,7 @@ export class AuthController {
   @ApiBody({type : VerifyOtpDto} )
   async verifyOtp(@Body() verifyOtp: VerifyOtpDto) {
     return await this.authService.verifyOtp(verifyOtp);
+
   }
   
   // Pengiriman kembali email

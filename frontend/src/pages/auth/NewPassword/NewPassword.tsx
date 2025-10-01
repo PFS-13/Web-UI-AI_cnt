@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate,useLocation } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const NewPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -15,9 +16,18 @@ const NewPassword: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  
+  const [user_id, setUserId] = useState('');
   const newPasswordInputRef = useRef<HTMLInputElement>(null);
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+  useEffect(() => {
+
+      const user_id = location.state.user_id || {};
+      if (!user_id) {
+        navigate('/login')
+      }
+      setUserId(user_id);
+    }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +62,8 @@ const NewPassword: React.FC = () => {
     
     try {
       // Simulate API call untuk reset password
-      console.log('Setting new password:', newPassword);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      
-      // Redirect ke login setelah berhasil
+      console.log('Resetting password to:', newPassword, user_id);
+      await authAPI.changePassword(user_id, newPassword);
       navigate('/login');
     } catch (error) {
       console.error('Password reset error:', error);
