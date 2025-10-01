@@ -61,6 +61,7 @@ const ChatPage: React.FC = () => {
           last_message: '',
           messages: [],
           created_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
         };
         setConversations(prev => [newConversation, ...prev]);
         setCurrentConversation(newConversation);

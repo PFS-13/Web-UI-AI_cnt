@@ -15,7 +15,7 @@ export interface SidebarProps {
 }
 
 
-const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHistory }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHistory, activated_conversation }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '200px' });
