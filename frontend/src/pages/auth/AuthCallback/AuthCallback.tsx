@@ -10,49 +10,37 @@ const AuthCallback: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        const token = searchParams.get('token');
-        
-        if (!token) {
-          setStatus('error');
-          setMessage('No authentication token received');
-          return;
-        }
-
-        // Store the token
-        sessionStorage.setItem('auth_token', token);
-        
-        // For now, we'll create a mock user object
-        // In a real app, you'd decode the JWT or fetch user data
-        const mockUser = {
-          id: 'user-id',
-          email: 'user@example.com',
-          username: 'User',
-          is_active: true,
-          provider: 'google' as const,
-        };
-
-        setUser(mockUser, token);
+ useEffect(() => {
+  const handleCallback = async () => {
+    try {
+      // Cek cookie Authentication dengan memanggil endpoint protected
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/auth/v1/me`, {
+        credentials: 'include', 
+      });
+      if (res.ok) {
         setStatus('success');
         setMessage('Login successful! Redirecting...');
-        
-        // Redirect to tell us about you page after 2 seconds
+        // Redirect ke dashboard
         setTimeout(() => {
-          navigate('/tell-us-about-you');
+          navigate('/dashboard');
         }, 2000);
-        
-      } catch (error) {
-        console.error('Auth callback error:', error);
-        setStatus('error');
-        setMessage('Authentication failed. Please try again.');
+      } else {
+        throw new Error('Authentication cookie not found or invalid');
       }
-    };
+    } catch (error) {
+      console.error('Auth callback error:', error);
+      setStatus('error');
+      setMessage('Authentication failed. Please try again.');
+      // Redirect ke halaman login setelah 3 detik
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    }
+  };
 
-    handleCallback();
-  }, [searchParams, setUser, navigate]);
-
+  handleCallback();
+}, [searchParams, setUser, navigate]);
   return (
     <div className={styles.container}>
       <div className={styles.card}>

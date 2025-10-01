@@ -41,7 +41,9 @@ export const formatDate = (date: string | Date): string => {
   });
 };
 
-export const formatRelativeTime = (date: string | Date): string => {
+export const formatRelativeTime = (date?: string | Date): string => {
+  if (!date) return 'Unknown';
+
   const now = new Date();
   const d = new Date(date);
   const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000);

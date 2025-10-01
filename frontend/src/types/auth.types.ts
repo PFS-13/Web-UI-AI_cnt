@@ -4,7 +4,7 @@ export interface User {
   username?: string;
   image_url?: string;
   is_active: boolean;
-  provider: 'manual' | 'google' | 'both';
+  provider: 'manual' | 'google';
   created_at?: string;
   updated_at?: string;
 }
@@ -22,14 +22,13 @@ export interface LoginCredentials {
   password: string;
 }
 
-
 export interface RegisterCredentials {
   email: string;
   password: string;
 }
 
 export interface AuthResponse {
-  message: string;
+  message?: string;
   user_id?: string;
   token?: string;
 }
@@ -46,6 +45,7 @@ export interface VerifyOtpRequest {
 
 export interface VerifyOtpResponse {
   message: string;
+  user_id?: string;
 }
 
 export const TokenType = {

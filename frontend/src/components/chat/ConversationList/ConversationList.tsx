@@ -136,7 +136,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                         {truncateText(conversation.title, 30)}
                       </h3>
                       <p className={styles.conversationTime}>
-                        {formatRelativeTime(conversation.last_message || conversation.created_at)}
+                        {formatRelativeTime(conversation.last_updated || conversation.created_at)}
                       </p>
                     </>
                   )}

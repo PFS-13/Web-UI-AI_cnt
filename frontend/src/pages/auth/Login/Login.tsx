@@ -5,15 +5,36 @@ import { AuthHeader } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import styles from '../styles/Auth.module.css';
 import { authAPI } from '../../../services/api/auth.api';
+  
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // 👈 tambahan
+
   const emailInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { } = useAuth();
+
+    useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const me = await authAPI.getMe();
+        if (me) {
+          navigate('/dashboard', { replace: true }); // langsung redirect tanpa flicker
+        } else {
+          setIsCheckingAuth(false); // belum login, render halaman login
+        }
+      } catch (error) {
+        setIsCheckingAuth(false); // error (misalnya 401), tetap render login
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
 
   // Auto focus ketika error muncul
   useEffect(() => {
@@ -44,7 +65,7 @@ const Login: React.FC = () => {
       if (response.provider == 'google') {
         window.location.href = `http://localhost:3001/auth/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
-        // Implement manual login here
+        navigate('/input-password', { state: { email } });
       } else {
         navigate('/register', { state: { email } });
       }
@@ -74,6 +95,13 @@ const Login: React.FC = () => {
     // Implement phone login
     console.log('Phone login clicked');
   };
+  if (isCheckingAuth) {
+    return (
+      <div className={styles.container}>
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

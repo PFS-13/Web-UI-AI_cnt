@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/common';
 import { AuthHeader } from '../../../components/layout';
-import { validateFullName, saveUserProfile } from '../../../utils/userProfile';
-import type { UserProfile } from '../../../utils/userProfile';
+import { validateFullName } from '../../../utils/userProfile';
 import styles from '../styles/Auth.module.css';
+import { authAPI } from '../../../services';
 
 const TellUsAboutYou: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -15,12 +15,6 @@ const TellUsAboutYou: React.FC = () => {
   const fullNameInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Optional: Redirect jika user belum login (bisa di-comment untuk testing)
-  // useEffect(() => {
-  //   if (!isLoading && !user) {
-  //     navigate('/login');
-  //   }
-  // }, [user, isLoading, navigate]);
 
   // Auto focus ketika error muncul
   useEffect(() => {
@@ -42,7 +36,6 @@ const TellUsAboutYou: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Clear previous errors
     setFullNameError('');
     
     // Validate inputs
@@ -55,21 +48,7 @@ const TellUsAboutYou: React.FC = () => {
     setIsFormLoading(true);
     
     try {
-      
-      // Buat user profile object
-      const userProfile: UserProfile = {
-        fullName: fullName.trim(),
-        completedOnboarding: true,
-        completedAt: new Date().toISOString()
-      };
-      
-      // Simpan ke localStorage untuk sementara
-      saveUserProfile(userProfile);
-      
-      // TODO: Uncomment ketika backend API sudah siap
-      // await saveUserProfileToAPI(userProfile);
-      
-      // Redirect ke dashboard
+      await authAPI.changeUsername(fullName, (await authAPI.getMe()).id);
       navigate('/dashboard');
       
     } catch (error) {

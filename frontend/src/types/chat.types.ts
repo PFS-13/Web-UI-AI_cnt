@@ -13,7 +13,6 @@ export interface Conversation {
   shared_url?: string;
   created_at: string;
   last_updated: string;
-  last_message?: string;
   messages?: Message[];
 }
 
