@@ -5,3 +5,4 @@ export { default as AuthCallback } from './AuthCallback';
 export { default as TellUsAboutYou } from './TellUsAboutYou';
 export { default as ResetPassword } from './ResetPassword';
 export { default as InputPassword } from './InputPassword';
+export { default as NewPassword } from './NewPassword';

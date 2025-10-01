@@ -1,7 +1,7 @@
 // src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { HomePage, Login, Register, Verification, AuthCallback, TellUsAboutYou, ResetPassword, InputPassword, Dashboard, ChatPage, ConversationHistory } from './pages';
+import { HomePage, Login, Register, Verification, AuthCallback, TellUsAboutYou, ResetPassword, InputPassword, NewPassword, Dashboard, ChatPage, ConversationHistory } from './pages';
 import styles from './App.module.css';
 import ProtectedRoute from './ProtectedRoute';
 import ChatIdPage from './pages/chat/[id]/Page';
@@ -20,6 +20,7 @@ const App: React.FC = () => {
           <Route path="/tell-us-about-you" element={<TellUsAboutYou />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/input-password" element={<InputPassword />} />
+          <Route path="/new-password" element={<NewPassword />} />
           <Route path="/dashboard"
             element={
               <ProtectedRoute>

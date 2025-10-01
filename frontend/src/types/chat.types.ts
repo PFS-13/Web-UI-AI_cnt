@@ -12,7 +12,7 @@ export interface Conversation {
   user_id: string;
   shared_url?: string;
   created_at: string;
-  last_updated?: string;
+  last_updated: string;
   messages?: Message[];
 }
 
