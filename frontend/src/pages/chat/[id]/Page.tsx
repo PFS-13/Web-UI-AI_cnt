@@ -7,6 +7,7 @@ interface ChatMessage {
   id?: number;
   content: string;
   is_user: boolean;
+  is_edited?: boolean;
   // timestamp: Date;
 }
 import { authAPI } from '../../../services';
@@ -29,16 +30,15 @@ const ChatIdPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [allMessagesId, setAllMessagesId] = useState<number[][]>([]);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [lastChat,setLastChat] = useState<number | null>(null);
-  const [chatHistory, setChatHistory] = useState<
-        Array<{ id: string; title: string; isActive: boolean }>
-      >([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; isActive: boolean }>>([]);
   const [sharedUrl, setSharedUrl] = useState("");
-  const [path,setPath] = useState<string>('');
+const [path, setPath] = useState<number[]>([]);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -59,7 +59,6 @@ const ChatIdPage: React.FC = () => {
             title: item.title,
             isActive: item.conversation_id === id
           }));
-    
           setChatHistory(chatHistory);
         } catch (error) {
           console.error('Error fetching conversations:', error);
@@ -67,23 +66,23 @@ const ChatIdPage: React.FC = () => {
       };
       fetchConversations();
     }, [user])
-
   useEffect(() => {
     if (id) {
       const fetchMessages = async () => {
         try {
-          const response = await messageAPI.getMessages(id);
-          const firstPath = response[0];
-          const pathString = firstPath.path_ids.toString();
-          setPath(pathString);
-          const messages: ChatMessage[] = firstPath.path_messages.map(msg => ({
+          const messages = await messageAPI.getMessages(id);
+          const messages_no_dupes = removeDuplicatesAcrossArrays(messages);
+          setAllMessagesId(messages_no_dupes);
+          const firstPathIds: number[] = messages[0] || [];
+          const content_message = firstPathIds.length ? await messageAPI.getMessageByIds(firstPathIds) : [];
+          setPath(firstPathIds);
+          const chat_message: ChatMessage[] = content_message.map(msg => ({
             id: msg.id,
             content: msg.content,
             is_user: msg.is_user,
+            is_edited: msg.is_edited,
           }));
-          setChatMessages(messages);
-          setLastChat(messages.length > 0 ? messages[messages.length - 1].id! : null);
-
+          setChatMessages(chat_message);
         } catch (error) {
           console.error('Failed to fetch messages:', error);
         }
@@ -91,6 +90,22 @@ const ChatIdPage: React.FC = () => {
       fetchMessages();
     }
   }, [id]);
+
+  const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
+  const seen = new Set<number>();
+  return arrays.map(arr => {
+    const filtered = arr.filter(num => !seen.has(num));
+    filtered.forEach(num => seen.add(num));
+    return filtered;
+  });
+};
+  useEffect(() => {
+  setAllMessagesId(prev => removeDuplicatesAcrossArrays(prev));
+}, []);
+
+useEffect(() => {
+  console.log(allMessagesId);
+}, [allMessagesId]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -151,10 +166,8 @@ const ChatIdPage: React.FC = () => {
       setImagePreviews([]);
     }
   };
-  
-
   const handleAttachClick = () => {
-    
+
     if (!isAttachDropdownOpen && attachContainerRef.current) {
       const buttonRect = attachContainerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -302,7 +315,7 @@ const ChatIdPage: React.FC = () => {
 
   const createSharedUrl = async () => {
     try { 
-      const response = await conversationAPI.shareConversation(id!, path);
+      const response = await conversationAPI.shareConversation(id!, path.toString());
       const url = import.meta.env.VITE_FRONTEND_URL;
       const shared_url = `${url}/share/${response.shared_url}`;
       setSharedUrl(shared_url);
@@ -392,6 +405,45 @@ const ChatIdPage: React.FC = () => {
       };
     }
   }, [isModalOpen]);
+  // TODO
+
+  const findPathIndex = (arrays: number[][], edited_id: number) => {
+    console.log("the edited id",edited_id);
+    return arrays.findIndex(arr => arr.includes(edited_id));
+  };
+const handleChangePath = async (message_id: number) => {
+  const res = await messageAPI.getEditedMessageId(message_id);
+  const edited_id = res.edited_id;
+
+  console.log("the edited id", edited_id);
+
+  // cari index path yang berisi edited_id
+  const path_index = findPathIndex(allMessagesId, edited_id);
+  console.log("the index", path_index);
+
+  if (path_index !== -1) {
+    setPath(prevPath => {
+      // copy biar immutabel
+      let newPath = [...prevPath];
+
+      // cari posisi message_id di path sekarang
+      const messagePos = newPath.indexOf(message_id);
+      if (messagePos !== -1) {
+        // potong dari message_id ke kanan
+        newPath = newPath.slice(0, messagePos);
+      }
+
+      // tambahkan path baru (allMessagesId[path_index])
+      return [...newPath, ...allMessagesId[path_index]];
+    });
+  }
+};
+
+
+
+  useEffect(() => {
+    console.log("the path",path);
+  }, [path]);
 
   // Global drag events to detect when user starts dragging files
   React.useEffect(() => {
@@ -483,6 +535,7 @@ const ChatIdPage: React.FC = () => {
                   <div className={styles.messageContent}>
                     {message.content}
                   </div>
+                  {message.is_edited && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!)}>(edited)</span>)}
                   {!message.is_user && (
                     <div className={styles.messageActions}>
                       <button className={styles.actionButton}>

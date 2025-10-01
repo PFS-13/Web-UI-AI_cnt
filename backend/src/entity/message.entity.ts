@@ -26,6 +26,9 @@ export class Message {
   @Column({ type: 'boolean', nullable: true })
   is_user: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_edited: boolean;
+
   @Column({ type: 'int', nullable: true })
   edited_from_message_id: number;
 
