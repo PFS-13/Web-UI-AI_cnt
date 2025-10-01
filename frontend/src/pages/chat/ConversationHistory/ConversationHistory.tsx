@@ -107,6 +107,7 @@ const ConversationHistory: React.FC = () => {
           last_message: '',
           messages: [],
           created_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
         };
         setConversations(prev => [newConversation, ...prev]);
         setSelectedConversation(newConversation);
@@ -162,7 +163,7 @@ const ConversationHistory: React.FC = () => {
                     Created: {formatRelativeTime(selectedConversation.created_at)}
                   </span>
                   <span className={styles.lastMessage}>
-                    Last message: {formatRelativeTime(selectedConversation.last_message)}
+                    Last message: {formatRelativeTime(selectedConversation.last_message || selectedConversation.created_at)}
                   </span>
                 </div>
               </div>
