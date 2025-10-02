@@ -155,7 +155,6 @@ async createUser({ email, password }: AuthDto): Promise<User> {
   }
 
   async changePassword(user_id: UUID, new_password: string): Promise<void> {
-  console.log('Changing password for user:', user_id, 'to new password:', new_password);
   return await this.dataSource.transaction(async (manager) => {
     const user = await manager.findOne(User, { where: { id: user_id } });
     if (!user) {

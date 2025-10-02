@@ -352,7 +352,7 @@ async findByIds(messageIds: number[]) {
     const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
     if (!msg) throw new Error('Message not found');
     const id_edited = await this.messageRepo.findOne({ select: { id: true }, where: { edited_from_message_id: msg.id } });
-    if (!id_edited) throw new Error('Edited message not found');
+    if (!id_edited) throw new Error('No edited message found');
     return { edited_id: id_edited.id };
   }
 

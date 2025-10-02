@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Sidebar from '../../../components/layout/Sidebar/Sidebar';
 import styles from './ChatId.module.css';
 import { conversationAPI } from '../../../services';
@@ -8,6 +8,7 @@ interface ChatMessage {
   content: string;
   is_user: boolean;
   is_edited?: boolean;
+  edited_from_message_id?: number;
   // timestamp: Date;
 }
 import { authAPI } from '../../../services';
@@ -81,6 +82,7 @@ const [path, setPath] = useState<number[]>([]);
             content: msg.content,
             is_user: msg.is_user,
             is_edited: msg.is_edited,
+            edited_from_message_id: msg.edited_from_message_id
           }));
           setChatMessages(chat_message);
         } catch (error) {
@@ -90,6 +92,21 @@ const [path, setPath] = useState<number[]>([]);
       fetchMessages();
     }
   }, [id]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const messages = await messageAPI.getMessageByIds(path);
+      const chat_message: ChatMessage[] = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        is_user: msg.is_user,
+        is_edited: msg.is_edited,
+        edited_from_message_id: msg.edited_from_message_id
+      }));
+      setChatMessages(chat_message);
+    };
+    fetchMessages();
+  }, [path]);
 
   const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
   const seen = new Set<number>();
@@ -408,20 +425,29 @@ useEffect(() => {
   // TODO
 
   const findPathIndex = (arrays: number[][], edited_id: number) => {
-    console.log("the edited id",edited_id);
-    return arrays.findIndex(arr => arr.includes(edited_id));
-  };
+
+  for (let i = 0; i < arrays.length; i++) {
+    const innerIndex = arrays[i].indexOf(edited_id); // cari posisi dalam array
+    if (innerIndex !== -1) {
+      return { outerIndex: i, innerIndex }; // kembalikan dua indeks
+    }
+  }
+
+  return { outerIndex: -1, innerIndex: -1 }; // jika tidak ditemukan
+};
+
+
 const handleChangePath = async (message_id: number) => {
   const res = await messageAPI.getEditedMessageId(message_id);
   const edited_id = res.edited_id;
 
   console.log("the edited id", edited_id);
 
-  // cari index path yang berisi edited_id
-  const path_index = findPathIndex(allMessagesId, edited_id);
-  console.log("the index", path_index);
+  // cari index path & posisi edited_id
+  const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
+  console.log("the index", { outerIndex, innerIndex });
 
-  if (path_index !== -1) {
+  if (outerIndex !== -1 && innerIndex !== -1) {
     setPath(prevPath => {
       // copy biar immutabel
       let newPath = [...prevPath];
@@ -433,11 +459,13 @@ const handleChangePath = async (message_id: number) => {
         newPath = newPath.slice(0, messagePos);
       }
 
-      // tambahkan path baru (allMessagesId[path_index])
-      return [...newPath, ...allMessagesId[path_index]];
+      // tambahkan path baru mulai dari edited_id (bukan seluruh path)
+      const subPath = allMessagesId[outerIndex].slice(innerIndex);
+      return [...newPath, ...subPath];
     });
   }
 };
+
 
 
 
@@ -536,6 +564,8 @@ const handleChangePath = async (message_id: number) => {
                     {message.content}
                   </div>
                   {message.is_edited && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!)}>(edited)</span>)}
+                  {message.edited_from_message_id!! && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!)}>(edited from {message.edited_from_message_id})</span>)}
+
                   {!message.is_user && (
                     <div className={styles.messageActions}>
                       <button className={styles.actionButton}>
