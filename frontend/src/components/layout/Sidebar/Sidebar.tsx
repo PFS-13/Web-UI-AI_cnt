@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-import { authAPI } from '../../../services';
+import { authAPI, conversationAPI } from '../../../services';
 import SearchPopup from './SearchPopup';
 import type { Conversation } from '../../../types/chat.types';
 
@@ -164,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         break;
       case 'delete':
         // TODO: Implement delete functionality
-        console.log('Delete conversation:', chatId);
+        conversationAPI.deleteConversation(chatId)
         break;
     }
     setOpenConversationMenuId(null);
