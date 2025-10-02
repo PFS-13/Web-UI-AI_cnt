@@ -35,8 +35,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '240px' });
+  const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
+  const [conversationMenuPosition, setConversationMenuPosition] = useState({ top: '0px', left: '0px' });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
+  const conversationMenuRef = useRef<HTMLDivElement>(null);
 
   const handleNewChat = () => {
     navigate('/dashboard');
@@ -74,13 +77,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     // TODO: Implement upgrade functionality
   };
 
+  // Function to measure text width
+  const measureTextWidth = (text: string, fontSize: string = '14px', fontFamily: string = 'system-ui, -apple-system, sans-serif') => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.font = `${fontSize} ${fontFamily}`;
+      return context.measureText(text).width;
+    }
+    return 0;
+  };
+
   const handleProfileClick = () => {
     if (!isProfileDropdownOpen && profileSectionRef.current) {
       const rect = profileSectionRef.current.getBoundingClientRect();
+      
+      // Calculate dynamic width based on email length
+      const baseWidth = 240; // Minimum width
+      const emailText = user?.email || '';
+      const emailWidth = measureTextWidth(emailText, '14px') + 80; // Add padding for icon and margins
+      const dynamicWidth = Math.max(baseWidth, emailWidth);
+      
       setDropdownPosition({
         top: `${rect.top - 250}px`, // 8px di atas profile section
         left: `${rect.left}px`,   // Sejajar dengan kiri profile section
-        width: '240px'  // Fixed width untuk konsistensi
+        width: `${dynamicWidth}px`  // Dynamic width based on email length
       });
     }
     setIsProfileDropdownOpen(!isProfileDropdownOpen);
@@ -101,6 +122,54 @@ const Sidebar: React.FC<SidebarProps> = ({
     navigate(`/c/${chatId}`);
   };
 
+  // Function to truncate text and determine if tooltip is needed
+  const truncateTitle = (title: string | null | undefined, maxLength: number = 30) => {
+    // Handle null, undefined, or empty string cases
+    if (!title || typeof title !== 'string') {
+      return { truncated: 'Untitled', needsTooltip: false };
+    }
+    
+    if (title.length <= maxLength) {
+      return { truncated: title, needsTooltip: false };
+    }
+    return { 
+      truncated: title.substring(0, maxLength) + '...', 
+      needsTooltip: true 
+    };
+  };
+
+  // Handle conversation menu click
+  const handleConversationMenuClick = (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation(); // Prevent conversation selection
+    
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setConversationMenuPosition({
+      top: `${rect.bottom + 5}px`,
+      left: `${rect.left - 100}px` // Offset to the left
+    });
+    
+    setOpenConversationMenuId(openConversationMenuId === chatId ? null : chatId);
+  };
+
+  // Handle conversation menu actions
+  const handleConversationAction = (action: string, chatId: string) => {
+    switch(action) {
+      case 'share':
+        // TODO: Implement share functionality
+        console.log('Share conversation:', chatId);
+        break;
+      case 'rename':
+        // TODO: Implement rename functionality
+        console.log('Rename conversation:', chatId);
+        break;
+      case 'delete':
+        // TODO: Implement delete functionality
+        console.log('Delete conversation:', chatId);
+        break;
+    }
+    setOpenConversationMenuId(null);
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,16 +181,24 @@ const Sidebar: React.FC<SidebarProps> = ({
       ) {
         setIsProfileDropdownOpen(false);
       }
+
+      // Close conversation menu when clicking outside
+      if (
+        conversationMenuRef.current &&
+        !conversationMenuRef.current.contains(event.target as Node)
+      ) {
+        setOpenConversationMenuId(null);
+      }
     };
 
-    if (isProfileDropdownOpen) {
+    if (isProfileDropdownOpen || openConversationMenuId) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isProfileDropdownOpen]);
+  }, [isProfileDropdownOpen, openConversationMenuId]);
 
   // Keyboard shortcut for search (Ctrl + K)
   useEffect(() => {
@@ -218,15 +295,85 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {chatHistory  ? (
             <div className={styles.chatHistoryList}>
-              {chatHistory.map((chat) => (
-                <button
-                  key={chat.id}
-                  className={`${styles.sidebarButton} ${chat.id == activated_conversation ? styles.sidebarButtonActive : ''}`}
-                  onClick={() => handleChatClick(chat.id)}
-                >
-                  <span>{chat.title}</span>
-                </button>
-              ))}
+              {chatHistory.map((chat) => {
+                const { truncated, needsTooltip } = truncateTitle(chat.title);
+                return (
+                  <div key={chat.id} className={styles.conversationItem}>
+                    <button
+                      className={`${styles.sidebarButton} ${chat.id == activated_conversation ? styles.sidebarButtonActive : ''}`}
+                      onClick={() => handleChatClick(chat.id)}
+                      title={needsTooltip && chat.title ? chat.title : undefined}
+                    >
+                      <span className={styles.chatTitle}>{truncated}</span>
+                    </button>
+                    <button
+                      className={styles.conversationMenuButton}
+                      onClick={(e) => handleConversationMenuClick(e, chat.id)}
+                      title="More options"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                      </svg>
+                    </button>
+                    
+                    {/* Conversation Menu Dropdown */}
+                    {openConversationMenuId === chat.id && (
+                      <div 
+                        className={styles.conversationMenu}
+                        ref={conversationMenuRef}
+                        style={{
+                          position: 'fixed',
+                          top: conversationMenuPosition.top,
+                          left: conversationMenuPosition.left,
+                          zIndex: 10000
+                        }}
+                      >
+                        <div 
+                          className={styles.conversationMenuItem}
+                          onClick={() => handleConversationAction('share', chat.id)}
+                        >
+                          <div className={styles.conversationMenuIcon}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                            </svg>
+                          </div>
+                          <span>Share</span>
+                        </div>
+                        <div 
+                          className={styles.conversationMenuItem}
+                          onClick={() => handleConversationAction('rename', chat.id)}
+                        >
+                          <div className={styles.conversationMenuIcon}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                          </div>
+                          <span>Rename</span>
+                        </div>
+                        
+                        {/* Divider */}
+                        <div className={styles.conversationMenuDivider}></div>
+                        
+                        <div 
+                          className={`${styles.conversationMenuItem} ${styles.conversationMenuItemDanger}`}
+                          onClick={() => handleConversationAction('delete', chat.id)}
+                        >
+                          <div className={styles.conversationMenuIcon}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3,6 5,6 21,6"/>
+                              <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                              <line x1="10" y1="11" x2="10" y2="17"/>
+                              <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                          </div>
+                          <span>Delete</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className={styles.emptyState}>
