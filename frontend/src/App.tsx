@@ -5,6 +5,7 @@ import { HomePage, Login, Register, Verification, AuthCallback, TellUsAboutYou, 
 import styles from './App.module.css';
 import ProtectedRoute from './ProtectedRoute';
 import ChatIdPage from './pages/chat/[id]/Page';
+import FileUpload from './FileUpload';
 // import ChangePasswordPage from './forgotpassword';
 const App: React.FC = () => {
   return (
@@ -21,6 +22,9 @@ const App: React.FC = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/input-password" element={<InputPassword />} />
           <Route path="/new-password" element={<NewPassword />} />
+          <Route path="/file-upload" element={<FileUpload messageId={123} />} />
+
+
           <Route path="/dashboard"
             element={
               <ProtectedRoute>

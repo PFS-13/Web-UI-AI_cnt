@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth.module';
 import { UsersModule } from './modules/user.module';
 import { ConversationModule } from './modules/conversation.module';
 import { MessageModule } from './modules/message.module';
+import { AttachedMessageModule } from './modules/attached.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -23,7 +24,8 @@ import { MessageModule } from './modules/message.module';
     AuthModule,
     ConversationModule,
     UsersModule,
-    MessageModule
+    MessageModule,
+    AttachedMessageModule
   ],
   controllers: [],
   providers: [],

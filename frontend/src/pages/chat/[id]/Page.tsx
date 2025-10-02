@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from 'react';
+import React, {useEffect, useState } from 'react';
 import Sidebar from '../../../components/layout/Sidebar/Sidebar';
 import styles from './ChatId.module.css';
 import { conversationAPI } from '../../../services';
@@ -346,7 +346,7 @@ useEffect(() => {
               try {
                 // Fetch messages for this conversation
                 const messagesResponse = await messageAPI.getPathMessages(conversation.conversation_id);
-                // Extract messages from ConversationPath array
+                // Extract messages from ConversationPath arraygitgi
                 const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
                 return {
                   ...conversation,
