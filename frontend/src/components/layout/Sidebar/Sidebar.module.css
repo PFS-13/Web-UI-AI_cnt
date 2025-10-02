@@ -184,6 +184,120 @@
   flex-shrink: 0;
 }
 
+/* Chat title truncation */
+.chatTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  flex: 1;
+}
+
+/* Conversation Item Container */
+.conversationItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.conversationItem .sidebarButton {
+  flex: 1;
+  margin-right: 0;
+}
+
+/* Conversation Menu Button (Three dots) */
+.conversationMenuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.conversationItem:hover .conversationMenuButton {
+  opacity: 1;
+}
+
+.conversationMenuButton:hover {
+  background: #404040;
+  color: #ffffff;
+}
+
+/* Conversation Menu Dropdown */
+.conversationMenu {
+  background: #2d2d2d;
+  border: 1px solid #484848;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.conversationMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.conversationMenuItem:hover {
+  background: #404040;
+}
+
+.conversationMenuIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.conversationMenuItem:hover .conversationMenuIcon {
+  color: #ffffff;
+}
+
+/* Conversation Menu Divider */
+.conversationMenuDivider {
+  height: 1px;
+  background: #484848;
+  margin: 4px 0;
+}
+
+/* Danger item styling for delete */
+.conversationMenuItemDanger {
+  color: #ef4444;
+}
+
+.conversationMenuItemDanger:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.conversationMenuItemDanger .conversationMenuIcon {
+  color: #ef4444;
+}
+
+.conversationMenuItemDanger:hover .conversationMenuIcon {
+  color: #ffffff;
+}
+
 .sidebarButtonMinimized {
   justify-content: flex-start;
   padding: 0.5rem;
@@ -464,9 +578,8 @@
   border: 1px solid #484848;
   border-radius: 0.75rem;
   padding: 0.3rem;
-  width: 240px;
   min-width: 240px;
-  max-width: 240px;
+  max-width: 400px;
   z-index: 9999;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -509,6 +622,9 @@
   font-size: 0.875rem;
   text-align: left;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .dropdownSubtitle {
