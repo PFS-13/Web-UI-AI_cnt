@@ -72,7 +72,7 @@ class ConversationAPI {
 
   async deleteConversation(conversation_id: string): Promise<DeleteConversationResponse> {
     return this.request<DeleteConversationResponse>(`/conversation/v1/conversations/${conversation_id}/delete`, {
-      method: 'POST',
+      method: 'DELETE',
     });
   }
 }

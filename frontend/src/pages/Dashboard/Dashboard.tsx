@@ -105,7 +105,7 @@ const Dashboard: React.FC = () => {
   }, [user])
 
   const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
+    if (messagesContainerRef.current) { 
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
