@@ -2,6 +2,7 @@ import React, { use, useEffect, useState } from 'react';
 import Sidebar from '../../../components/layout/Sidebar/Sidebar';
 import styles from './ChatId.module.css';
 import { conversationAPI } from '../../../services';
+import type { Conversation } from '../../../types/chat.types';
 
 interface ChatMessage {
   id?: number;
@@ -32,6 +33,7 @@ const ChatIdPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [allMessagesId, setAllMessagesId] = useState<number[][]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
@@ -321,6 +323,56 @@ useEffect(() => {
     setIsSidebarMinimized(!isSidebarMinimized);
   };
 
+  const handleSelectConversation = (conversation: Conversation) => {
+    // Navigate to specific conversation
+    window.location.href = `/c/${conversation.conversation_id}`;
+  };
+
+  const handleNewChat = () => {
+    // Navigate to new chat or create new conversation
+    window.location.href = '/dashboard';
+  };
+
+  // Load conversations on mount
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (user?.id) {
+        try {
+          const data = await conversationAPI.getConversationsByUserId(user.id);
+          
+          // Enhanced: Fetch messages for each conversation to enable search
+          const conversationsWithMessages = await Promise.all(
+            data.map(async (conversation: any) => {
+              try {
+                // Fetch messages for this conversation
+                const messagesResponse = await messageAPI.getMessages(conversation.conversation_id);
+                // Extract messages from ConversationPath array
+                const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
+                return {
+                  ...conversation,
+                  messages: messages || []
+                };
+              } catch (error) {
+                console.warn(`Failed to fetch messages for conversation ${conversation.conversation_id}:`, error);
+                return {
+                  ...conversation,
+                  messages: []
+                };
+              }
+            })
+          );
+          
+          setConversations(conversationsWithMessages);
+        } catch (error) {
+          console.error('Failed to load conversations:', error);
+          setConversations([]);
+        }
+      }
+    };
+
+    loadConversations();
+  }, [user]);
+
   const handleShareClick = () => {
     setSharedUrl("");
     setIsShareModalOpen(true);
@@ -527,6 +579,9 @@ const handleChangePath = async (message_id: number) => {
         user={user}
         activated_conversation={id}
         chatHistory={chatHistory}
+        conversations={conversations}
+        onSelectConversation={handleSelectConversation}
+        onNewChat={handleNewChat}
       />
 
       {/* Main Content */}

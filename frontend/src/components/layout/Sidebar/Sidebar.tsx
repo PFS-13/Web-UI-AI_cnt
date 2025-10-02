@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import { authAPI } from '../../../services';
+import SearchPopup from './SearchPopup';
+import type { Conversation } from '../../../types/chat.types';
 
 export interface SidebarProps {
   isMinimized: boolean;
@@ -13,13 +15,26 @@ export interface SidebarProps {
   };
   activated_conversation?: string;
   chatHistory?: Array<{ id: string; title: string; isActive: boolean }>;
+  conversations?: Conversation[];
+  onSelectConversation?: (conversation: Conversation) => void;
+  onNewChat?: () => void;
 }
 
 
-const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHistory, activated_conversation }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  isMinimized, 
+  onToggle, 
+  user, 
+  chatHistory, 
+  activated_conversation, 
+  conversations = [], 
+  onSelectConversation, 
+  onNewChat 
+}) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '200px' });
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '240px' });
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
 
@@ -28,8 +43,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
   };
 
   const handleSearchClick = () => {
-    // Navigate to search or show search functionality
-    // TODO: Implement search functionality
+    setIsSearchOpen(true);
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchOpen(false);
+  };
+
+  const handleSearchSelectConversation = (conversation: Conversation) => {
+    if (onSelectConversation) {
+      onSelectConversation(conversation);
+    }
+  };
+
+  const handleSearchNewChat = () => {
+    if (onNewChat) {
+      onNewChat();
+    } else {
+      handleNewChat();
+    }
   };
 
   const handleLibrary = () => {
@@ -48,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
       setDropdownPosition({
         top: `${rect.top - 250}px`, // 8px di atas profile section
         left: `${rect.left}px`,   // Sejajar dengan kiri profile section
-        width: `${rect.width}px`  // Lebar sama dengan profile section
+        width: '240px'  // Fixed width untuk konsistensi
       });
     }
     setIsProfileDropdownOpen(!isProfileDropdownOpen);
@@ -96,7 +128,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key === 'k') {
         event.preventDefault();
-        handleSearchClick();
+        setIsSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Keyboard shortcut for new chat (Ctrl + Shift + O)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'O') {
+        event.preventDefault();
+        handleNewChat();
       }
     };
 
@@ -312,6 +359,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMinimized, onToggle, user, chatHist
           </div>
         )}
       </div>
+
+      {/* Search Popup */}
+      <SearchPopup
+        isOpen={isSearchOpen}
+        onClose={handleSearchClose}
+        conversations={conversations}
+        onSelectConversation={handleSearchSelectConversation}
+        onNewChat={handleSearchNewChat}
+      />
     </div>
   );
 };
