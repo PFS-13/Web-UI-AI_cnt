@@ -334,7 +334,7 @@ useEffect(() => {
   };
 
   // Load conversations on mount
-  useEffect(() => {
+ useEffect(() => {
     const loadConversations = async () => {
       if (user?.id) {
         try {
@@ -345,12 +345,12 @@ useEffect(() => {
             data.map(async (conversation: any) => {
               try {
                 // Fetch messages for this conversation
-                const messagesResponse = await messageAPI.getMessages(conversation.conversation_id);
+                const messagesResponse = await messageAPI.getPathMessages(conversation.conversation_id);
                 // Extract messages from ConversationPath array
                 const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
                 return {
                   ...conversation,
-                  messages: messages || []
+                   messages: messages || []
                 };
               } catch (error) {
                 console.warn(`Failed to fetch messages for conversation ${conversation.conversation_id}:`, error);
@@ -476,49 +476,99 @@ useEffect(() => {
   }, [isModalOpen]);
   // TODO
 
-  const findPathIndex = (arrays: number[][], edited_id: number) => {
+const findPathIndex = (arrays: number[][], edited_id: number) => {
+  console.groupCollapsed(`[findPathIndex] search edited_id=${edited_id}`);
+  console.debug('arrays length:', arrays.length);
 
   for (let i = 0; i < arrays.length; i++) {
-    const innerIndex = arrays[i].indexOf(edited_id); // cari posisi dalam array
+    const arr = arrays[i];
+    console.debug(`outerIndex=${i} (len=${arr.length}) ->`, arr);
+
+    const innerIndex = arr.indexOf(edited_id);
+    console.debug(`  checked outerIndex=${i}, innerIndex=${innerIndex}`);
+
     if (innerIndex !== -1) {
-      return { outerIndex: i, innerIndex }; // kembalikan dua indeks
+      console.log(`[findPathIndex] FOUND edited_id=${edited_id} at outerIndex=${i}, innerIndex=${innerIndex}`);
+      console.groupEnd();
+      return { outerIndex: i, innerIndex };
     }
   }
 
-  return { outerIndex: -1, innerIndex: -1 }; // jika tidak ditemukan
+  console.log(`[findPathIndex] NOT FOUND edited_id=${edited_id}`);
+  console.groupEnd();
+  return { outerIndex: -1, innerIndex: -1 };
 };
 
 
-const handleChangePath = async (message_id: number) => {
-  const res = await messageAPI.getEditedMessageId(message_id);
+const handleChangePath = async (message_id: number, type: string) => {
+  let res = null;
+  if (type === 'edited') {
+    res = await messageAPI.getEditedMessageId(message_id);
+  } else {
+    res = { edited_id: message_id };
+  }
   const edited_id = res.edited_id;
-
   console.log("the edited id", edited_id);
 
-  // cari index path & posisi edited_id
   const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
   console.log("the index", { outerIndex, innerIndex });
 
-  if (outerIndex !== -1 && innerIndex !== -1) {
-    setPath(prevPath => {
-      // copy biar immutabel
-      let newPath = [...prevPath];
+  if (outerIndex === -1 || innerIndex === -1) return;
+  setPath(prevPath => {
+  console.debug('[handleChangePath] prevPath:', prevPath);
 
-      // cari posisi message_id di path sekarang
-      const messagePos = newPath.indexOf(message_id);
-      if (messagePos !== -1) {
-        // potong dari message_id ke kanan
-        newPath = newPath.slice(0, messagePos);
+  // 1) coba cari message_id di prevPath
+  const messagePos = prevPath.indexOf(message_id);
+  console.debug('messagePos in prevPath =', messagePos);
+
+  let newPath: number[] = [];
+
+  if (messagePos !== -1) {
+    // pesan ada di prevPath -> potong sampai sebelum message_id
+    newPath = prevPath.slice(0, messagePos);
+  } else {
+    // pesan TIDAK ada di prevPath -> cari lokasinya di allMessagesId
+    const msgLoc = findPathIndex(allMessagesId, message_id);
+    console.debug('msgLoc from allMessagesId =', msgLoc);
+
+    if (msgLoc.outerIndex !== -1) {
+      // bangun newPath dari struktur sumber sampai message_id (inklusif)
+      newPath = allMessagesId[msgLoc.outerIndex].slice(0, msgLoc.innerIndex + 1);
+    } else {
+      // fallback: coba cari elemen terakhir di prevPath yang ada di allMessagesId
+      let fallbackIdx = -1;
+      for (let i = prevPath.length - 1; i >= 0; i--) {
+        const check = findPathIndex(allMessagesId, prevPath[i]);
+        if (check.outerIndex !== -1) {
+          fallbackIdx = i;
+          break;
+        }
       }
-
-      // tambahkan path baru mulai dari edited_id (bukan seluruh path)
-      const subPath = allMessagesId[outerIndex].slice(innerIndex);
-      return [...newPath, ...subPath];
-    });
+      if (fallbackIdx !== -1) {
+        newPath = prevPath.slice(0, fallbackIdx + 1);
+      } else {
+        // benar-benar tidak ada referensi -> biarkan prevPath apa adanya
+        newPath = prevPath.slice();
+      }
+    }
   }
+
+  // 2) ambil subPath dari lokasi edited_id
+  const editedLoc = findPathIndex(allMessagesId, edited_id);
+  if (editedLoc.outerIndex === -1) {
+    console.warn('[handleChangePath] edited_id not found in allMessagesId -> abort');
+    return prevPath;
+  }
+  const subPath = allMessagesId[editedLoc.outerIndex].slice(editedLoc.innerIndex);
+
+  // 3) gabungkan tanpa duplikat
+  if (newPath.length && subPath.length && newPath[newPath.length - 1] === subPath[0]) {
+    return [...newPath, ...subPath.slice(1)];
+  }
+  return [...newPath, ...subPath];
+});
+
 };
-
-
 
 
   useEffect(() => {
@@ -618,8 +668,8 @@ const handleChangePath = async (message_id: number) => {
                   <div className={styles.messageContent}>
                     {message.content}
                   </div>
-                  {message.is_edited && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!)}>(edited)</span>)}
-                  {message.edited_from_message_id!! && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!)}>(edited from {message.edited_from_message_id})</span>)}
+                  {message.is_edited && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!, 'edited')}> (edited)</span>)}
+                  {message.edited_from_message_id!! && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.edited_from_message_id!!, 'edited_from')}> (edited from {message.edited_from_message_id})</span>)}
 
                   {!message.is_user && (
                     <div className={styles.messageActions}>

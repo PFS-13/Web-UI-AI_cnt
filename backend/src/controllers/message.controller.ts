@@ -10,6 +10,12 @@ export class MessageController {
   constructor(
     private messageService: MessageService,
   ) {}
+
+  @ApiOperation({ summary: 'Get Path Messages by Conversation ID' })
+    @Get('v1/conversations/:conversation_id/paths')
+    async getMessagePathByConversationId(@Param('conversation_id') conversation_id: UUID) {
+        return await this.messageService.findPathByConversationId(conversation_id);
+    }
     @ApiOperation({ summary: 'Get Messages by Conversation ID' })
     @Get('v1/conversations/:conversation_id')
     async getMessageByConversationId(@Param('conversation_id') conversation_id: UUID) {

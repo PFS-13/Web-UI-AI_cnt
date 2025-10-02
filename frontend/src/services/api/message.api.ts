@@ -41,7 +41,9 @@ class MessageApi {
     return data as T;
   }
 
-
+  async getPathMessages(conversation_id: string): Promise<{ path_messages: any[] }[]> {
+    return this.request(`/message/v1/conversations/${conversation_id}/paths`, { method: 'GET' });
+  }
   async getMessages(conversation_id: string): Promise<number[][]> {
     return this.request(`/message/v1/conversations/${conversation_id}`, { method: 'GET' });
   }

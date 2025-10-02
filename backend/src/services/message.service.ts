@@ -294,6 +294,71 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
     return trimmed.slice(0, 117).trim() + '...';
   }
 
+  async findPathByConversationId(conversation_id: UUID): Promise<any[]> {
+  const sql = `
+    WITH RECURSIVE message_tree AS (
+      SELECT 
+        id,
+        conversation_id,
+        content,
+        created_at,
+        is_attach_file,
+        is_user,
+        edited_from_message_id,
+        parent_message_id,
+        ARRAY[id] AS path_ids,
+        ARRAY[
+          jsonb_build_object(
+            'id', id,
+            'conversation_id', conversation_id,
+            'content', content,
+            'created_at', created_at,
+            'is_attach_file', is_attach_file,
+            'is_user', is_user,
+            'edited_from_message_id', edited_from_message_id,
+            'parent_message_id', parent_message_id
+          )
+        ] AS path_messages
+      FROM message
+      WHERE parent_message_id IS NULL
+        AND conversation_id = $1
+
+      UNION ALL
+
+      SELECT 
+        m.id,
+        m.conversation_id,
+        m.content,
+        m.created_at,
+        m.is_attach_file,
+        m.is_user,
+        m.edited_from_message_id,
+        m.parent_message_id,
+        mt.path_ids || m.id,
+        mt.path_messages || jsonb_build_object(
+          'id', m.id,
+          'conversation_id', m.conversation_id,
+          'content', m.content,
+          'created_at', m.created_at,
+          'is_attach_file', m.is_attach_file,
+          'is_user', m.is_user,
+          'edited_from_message_id', m.edited_from_message_id,
+          'parent_message_id', m.parent_message_id
+        )
+      FROM message m
+      JOIN message_tree mt ON m.parent_message_id = mt.id
+    )
+    SELECT 
+      path_messages
+    FROM message_tree mt
+    WHERE NOT EXISTS (SELECT 1 FROM message ch WHERE ch.parent_message_id = mt.id)
+    ORDER BY path_ids;
+  `;
+  return await this.messageRepo.manager.query(sql, [conversation_id]);
+
+}
+
+
 async findByConversationId(conversation_id: UUID): Promise<number[][]> {
   const sql = `
     WITH RECURSIVE message_tree AS (
@@ -355,5 +420,11 @@ async findByIds(messageIds: number[]) {
     if (!id_edited) throw new Error('No edited message found');
     return { edited_id: id_edited.id };
   }
+
+  // async findBeforeEditedId(message_id: number) {
+  //   const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
+  //   if (!msg) throw new Error('Message not found');
+  //   return { edited_id: msg.id };
+  // }
 
 }
