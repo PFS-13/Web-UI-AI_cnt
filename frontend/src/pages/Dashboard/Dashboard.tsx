@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
           conversationsData.map(async (conversation: any) => {
             try {
               // Fetch messages for this conversation
-              const messagesResponse = await messageAPI.getMessages(conversation.conversation_id);
+              const messagesResponse = await messageAPI.getPathMessages(conversation.conversation_id);
               // Extract messages from ConversationPath array
               const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
               return {

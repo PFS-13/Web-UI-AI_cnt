@@ -7,6 +7,7 @@ export interface Message {
   edited_from_message_id?: number;
   parent_message_id?: number;
   created_at: Date;
+  is_edited: boolean;
 }
 
 export interface CreateMessagePayload {
@@ -16,6 +17,7 @@ export interface CreateMessagePayload {
   is_attach_file?: boolean;
   edited_from_message_id?: number | null;
   parent_message_id?: number | null;
+  is_edited?: boolean;
 }
 
 

@@ -1,7 +1,8 @@
 import type { 
 CreateMessagePayload,
 SendMessageResponse,
-FetchMessagesResponse
+FetchMessagesResponse,
+Message
 } from '../../types/message.types';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -40,8 +41,10 @@ class MessageApi {
     return data as T;
   }
 
-
-  async getMessages(conversation_id: string): Promise<FetchMessagesResponse> {
+  async getPathMessages(conversation_id: string): Promise<{ path_messages: any[] }[]> {
+    return this.request(`/message/v1/conversations/${conversation_id}/paths`, { method: 'GET' });
+  }
+  async getMessages(conversation_id: string): Promise<number[][]> {
     return this.request(`/message/v1/conversations/${conversation_id}`, { method: 'GET' });
   }
 
@@ -54,6 +57,21 @@ class MessageApi {
       body: JSON.stringify(message),
       
     });
+  }
+
+  async getMessageByIds(message_ids: number[]): Promise<Message[]> {
+    return this.request('/message/v1/messages/get-by-ids', {
+      method: 'POST',
+      headers: {
+      'Content-Type': 'application/json', 
+    },
+      body: JSON.stringify({ message_ids }),
+  });
+  }
+
+
+  async getEditedMessageId(message_id: number): Promise<{ edited_id: number }> {
+    return this.request(`/message/v1/messages/${message_id}/edited-id`, { method: 'GET' });
   }
 
 }

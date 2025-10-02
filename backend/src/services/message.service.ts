@@ -1,7 +1,7 @@
 // src/message/message.service.ts
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { createMessageDto } from '../dtos/message.dto';
 import { Message } from '../entity/message.entity';
 import { ConversationService } from './conversation.service';
@@ -86,36 +86,49 @@ export class MessageService {
 
   // --- method baru: ekstrak konteks & log ke logger (sanitized)
   private async extractContextAndConsoleLog(message: Message) {
-    const prompt = `
-    You are an assistant that extracts structured context from a user's chat message in Indonesian.
-    Output MUST be valid JSON and ONLY JSON (no extra commentary). The schema:
-    {
-      "summary": "<very short Indonesian summary, max 30 words>"
-    }
-    User message:
-    """${message.content}"""
-    Please produce the JSON only.
-    `;
-
-    let contextJson: any = null;
-    try {
-      const raw = await this._callModelRaw(prompt, 0.0, 200);
-      const jsonText = this._extractJsonFromText(raw);
-      contextJson = JSON.parse(jsonText);
-      if (!contextJson.summary) contextJson.summary = this._shortSummary(message.content);
-    } catch (e) {
-      this.logger.warn('Failed to extract structured context via model, using local fallback: ' + (e?.message ?? e));
-      contextJson = {
-        summary: this._shortSummary(message.content),
-      };
-    }
-    try {
-      await this.conversationService.edit(message.conversation_id, contextJson.summary);
-    } catch (e) {
-      this.logger.error('Failed to change conversation title ' + (e?.message ?? e));
-    }
-    return contextJson;
+  const prompt = `
+  You are an assistant that generates a suitable conversation title in Indonesian based on the user's chat message.
+  Output MUST be valid JSON and ONLY JSON (no extra commentary).
+  Schema:
+  {
+    "title": "<judul percakapan singkat, ringkas, alami, dan relevan dengan isi pesan, maksimal 10 kata>"
   }
+  User message:
+  """${message.content}"""
+  Please produce ONLY the JSON output.
+  `;
+
+  let contextJson: any = null;
+
+  try {
+    const raw = await this._callModelRaw(prompt, 0.0, 200);
+    const jsonText = this._extractJsonFromText(raw);
+    contextJson = JSON.parse(jsonText);
+
+    // 🔹 Tambahkan fallback jika tidak ada "title"
+    if (!contextJson.title || contextJson.title.trim() === '') {
+      contextJson.title = this._shortSummary(message.content) || 'new chat';
+    }
+  } catch (e) {
+    this.logger.warn('Failed to extract structured context via model, using local fallback: ' + (e?.message ?? e));
+    contextJson = {
+      title: this._shortSummary(message.content) || 'new chat',
+    };
+  }
+
+  // 🔹 Pastikan tetap ada fallback terakhir
+  if (!contextJson.title || contextJson.title.trim() === '') {
+    contextJson.title = 'new chat';
+  }
+
+  try {
+    await this.conversationService.edit(message.conversation_id, contextJson.title);
+  } catch (e) {
+    this.logger.error('Failed to change conversation title ' + (e?.message ?? e));
+  }
+
+  return contextJson;
+}
 
   // Ganti method ask di MessageService
   async ask(dto: createMessageDto) {
@@ -281,17 +294,7 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
     return trimmed.slice(0, 117).trim() + '...';
   }
 
-  private _extractKeywords(text: string) : string[] {
-    const stop = new Set(['yang','dan','di','ke','dari','dengan','untuk','pada','adalah','itu','sebuah','sebagai','saya','kamu']);
-    return text
-      .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 3 && !stop.has(w))
-      .slice(0,3);
-  }
-
-async findByConversationId(conversation_id: UUID): Promise<any[]> {
+  async findPathByConversationId(conversation_id: UUID): Promise<any[]> {
   const sql = `
     WITH RECURSIVE message_tree AS (
       SELECT 
@@ -346,14 +349,82 @@ async findByConversationId(conversation_id: UUID): Promise<any[]> {
       JOIN message_tree mt ON m.parent_message_id = mt.id
     )
     SELECT 
-      path_ids,
       path_messages
     FROM message_tree mt
     WHERE NOT EXISTS (SELECT 1 FROM message ch WHERE ch.parent_message_id = mt.id)
     ORDER BY path_ids;
   `;
-  return this.messageRepo.manager.query(sql, [conversation_id]);
+  return await this.messageRepo.manager.query(sql, [conversation_id]);
+
 }
 
+
+async findByConversationId(conversation_id: UUID): Promise<number[][]> {
+  const sql = `
+    WITH RECURSIVE message_tree AS (
+      SELECT 
+        id,
+        conversation_id,
+        content,
+        created_at,
+        is_attach_file,
+        is_user,
+        edited_from_message_id,
+        parent_message_id,
+        is_edited,
+        ARRAY[id] AS path_ids
+      FROM message
+      WHERE parent_message_id IS NULL
+        AND conversation_id = $1
+
+      UNION ALL
+
+      SELECT 
+        m.id,
+        m.conversation_id,
+        m.content,
+        m.created_at,
+        m.is_attach_file,
+        m.is_user,
+        m.edited_from_message_id,
+        m.parent_message_id,
+        m.is_edited,
+        mt.path_ids || m.id
+      FROM message m
+      JOIN message_tree mt ON m.parent_message_id = mt.id
+    )
+    SELECT 
+      path_ids
+    FROM message_tree mt
+    WHERE NOT EXISTS (SELECT 1 FROM message ch WHERE ch.parent_message_id = mt.id)
+    ORDER BY path_ids;
+  `;
+
+  const result = await this.messageRepo.manager.query(sql, [conversation_id]);
+
+  // ubah array of object menjadi array of array
+  return result.map((r: any) => r.path_ids);
+}
+
+async findByIds(messageIds: number[]) {
+    return this.messageRepo.find({
+      where: { id: In(messageIds) },
+      order: { created_at: 'ASC' },
+    });
+  }
+
+  async findEditedId(message_id: number) {
+    const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
+    if (!msg) throw new Error('Message not found');
+    const id_edited = await this.messageRepo.findOne({ select: { id: true }, where: { edited_from_message_id: msg.id } });
+    if (!id_edited) throw new Error('No edited message found');
+    return { edited_id: id_edited.id };
+  }
+
+  // async findBeforeEditedId(message_id: number) {
+  //   const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
+  //   if (!msg) throw new Error('Message not found');
+  //   return { edited_id: msg.id };
+  // }
 
 }

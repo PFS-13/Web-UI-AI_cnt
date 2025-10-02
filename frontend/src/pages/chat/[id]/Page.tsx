@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Sidebar from '../../../components/layout/Sidebar/Sidebar';
 import styles from './ChatId.module.css';
 import { conversationAPI } from '../../../services';
@@ -8,6 +8,8 @@ interface ChatMessage {
   id?: number;
   content: string;
   is_user: boolean;
+  is_edited?: boolean;
+  edited_from_message_id?: number;
   // timestamp: Date;
 }
 import { authAPI } from '../../../services';
@@ -30,17 +32,16 @@ const ChatIdPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [allMessagesId, setAllMessagesId] = useState<number[][]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [lastChat,setLastChat] = useState<number | null>(null);
-  const [chatHistory, setChatHistory] = useState<
-        Array<{ id: string; title: string; isActive: boolean }>
-      >([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; isActive: boolean }>>([]);
   const [sharedUrl, setSharedUrl] = useState("");
-  const [path,setPath] = useState<string>('');
+const [path, setPath] = useState<number[]>([]);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -61,7 +62,6 @@ const ChatIdPage: React.FC = () => {
             title: item.title,
             isActive: item.conversation_id === id
           }));
-    
           setChatHistory(chatHistory);
         } catch (error) {
           console.error('Error fetching conversations:', error);
@@ -69,23 +69,24 @@ const ChatIdPage: React.FC = () => {
       };
       fetchConversations();
     }, [user])
-
   useEffect(() => {
     if (id) {
       const fetchMessages = async () => {
         try {
-          const response = await messageAPI.getMessages(id);
-          const firstPath = response[0];
-          const pathString = firstPath.path_ids.toString();
-          setPath(pathString);
-          const messages: ChatMessage[] = firstPath.path_messages.map(msg => ({
+          const messages = await messageAPI.getMessages(id);
+          const messages_no_dupes = removeDuplicatesAcrossArrays(messages);
+          setAllMessagesId(messages_no_dupes);
+          const firstPathIds: number[] = messages[0] || [];
+          const content_message = firstPathIds.length ? await messageAPI.getMessageByIds(firstPathIds) : [];
+          setPath(firstPathIds);
+          const chat_message: ChatMessage[] = content_message.map(msg => ({
             id: msg.id,
             content: msg.content,
             is_user: msg.is_user,
+            is_edited: msg.is_edited,
+            edited_from_message_id: msg.edited_from_message_id
           }));
-          setChatMessages(messages);
-          setLastChat(messages.length > 0 ? messages[messages.length - 1].id! : null);
-
+          setChatMessages(chat_message);
         } catch (error) {
           console.error('Failed to fetch messages:', error);
         }
@@ -93,6 +94,37 @@ const ChatIdPage: React.FC = () => {
       fetchMessages();
     }
   }, [id]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const messages = await messageAPI.getMessageByIds(path);
+      const chat_message: ChatMessage[] = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        is_user: msg.is_user,
+        is_edited: msg.is_edited,
+        edited_from_message_id: msg.edited_from_message_id
+      }));
+      setChatMessages(chat_message);
+    };
+    fetchMessages();
+  }, [path]);
+
+  const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
+  const seen = new Set<number>();
+  return arrays.map(arr => {
+    const filtered = arr.filter(num => !seen.has(num));
+    filtered.forEach(num => seen.add(num));
+    return filtered;
+  });
+};
+  useEffect(() => {
+  setAllMessagesId(prev => removeDuplicatesAcrossArrays(prev));
+}, []);
+
+useEffect(() => {
+  console.log(allMessagesId);
+}, [allMessagesId]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -153,10 +185,8 @@ const ChatIdPage: React.FC = () => {
       setImagePreviews([]);
     }
   };
-  
-
   const handleAttachClick = () => {
-    
+
     if (!isAttachDropdownOpen && attachContainerRef.current) {
       const buttonRect = attachContainerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -304,7 +334,7 @@ const ChatIdPage: React.FC = () => {
   };
 
   // Load conversations on mount
-  useEffect(() => {
+ useEffect(() => {
     const loadConversations = async () => {
       if (user?.id) {
         try {
@@ -315,12 +345,12 @@ const ChatIdPage: React.FC = () => {
             data.map(async (conversation: any) => {
               try {
                 // Fetch messages for this conversation
-                const messagesResponse = await messageAPI.getMessages(conversation.conversation_id);
+                const messagesResponse = await messageAPI.getPathMessages(conversation.conversation_id);
                 // Extract messages from ConversationPath array
                 const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
                 return {
                   ...conversation,
-                  messages: messages || []
+                   messages: messages || []
                 };
               } catch (error) {
                 console.warn(`Failed to fetch messages for conversation ${conversation.conversation_id}:`, error);
@@ -354,7 +384,7 @@ const ChatIdPage: React.FC = () => {
 
   const createSharedUrl = async () => {
     try { 
-      const response = await conversationAPI.shareConversation(id!, path);
+      const response = await conversationAPI.shareConversation(id!, path.toString());
       const url = import.meta.env.VITE_FRONTEND_URL;
       const shared_url = `${url}/share/${response.shared_url}`;
       setSharedUrl(shared_url);
@@ -444,6 +474,106 @@ const ChatIdPage: React.FC = () => {
       };
     }
   }, [isModalOpen]);
+  // TODO
+
+const findPathIndex = (arrays: number[][], edited_id: number) => {
+  console.groupCollapsed(`[findPathIndex] search edited_id=${edited_id}`);
+  console.debug('arrays length:', arrays.length);
+
+  for (let i = 0; i < arrays.length; i++) {
+    const arr = arrays[i];
+    console.debug(`outerIndex=${i} (len=${arr.length}) ->`, arr);
+
+    const innerIndex = arr.indexOf(edited_id);
+    console.debug(`  checked outerIndex=${i}, innerIndex=${innerIndex}`);
+
+    if (innerIndex !== -1) {
+      console.log(`[findPathIndex] FOUND edited_id=${edited_id} at outerIndex=${i}, innerIndex=${innerIndex}`);
+      console.groupEnd();
+      return { outerIndex: i, innerIndex };
+    }
+  }
+
+  console.log(`[findPathIndex] NOT FOUND edited_id=${edited_id}`);
+  console.groupEnd();
+  return { outerIndex: -1, innerIndex: -1 };
+};
+
+
+const handleChangePath = async (message_id: number, type: string) => {
+  let res = null;
+  if (type === 'edited') {
+    res = await messageAPI.getEditedMessageId(message_id);
+  } else {
+    res = { edited_id: message_id };
+  }
+  const edited_id = res.edited_id;
+  console.log("the edited id", edited_id);
+
+  const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
+  console.log("the index", { outerIndex, innerIndex });
+
+  if (outerIndex === -1 || innerIndex === -1) return;
+  setPath(prevPath => {
+  console.debug('[handleChangePath] prevPath:', prevPath);
+
+  // 1) coba cari message_id di prevPath
+  const messagePos = prevPath.indexOf(message_id);
+  console.debug('messagePos in prevPath =', messagePos);
+
+  let newPath: number[] = [];
+
+  if (messagePos !== -1) {
+    // pesan ada di prevPath -> potong sampai sebelum message_id
+    newPath = prevPath.slice(0, messagePos);
+  } else {
+    // pesan TIDAK ada di prevPath -> cari lokasinya di allMessagesId
+    const msgLoc = findPathIndex(allMessagesId, message_id);
+    console.debug('msgLoc from allMessagesId =', msgLoc);
+
+    if (msgLoc.outerIndex !== -1) {
+      // bangun newPath dari struktur sumber sampai message_id (inklusif)
+      newPath = allMessagesId[msgLoc.outerIndex].slice(0, msgLoc.innerIndex + 1);
+    } else {
+      // fallback: coba cari elemen terakhir di prevPath yang ada di allMessagesId
+      let fallbackIdx = -1;
+      for (let i = prevPath.length - 1; i >= 0; i--) {
+        const check = findPathIndex(allMessagesId, prevPath[i]);
+        if (check.outerIndex !== -1) {
+          fallbackIdx = i;
+          break;
+        }
+      }
+      if (fallbackIdx !== -1) {
+        newPath = prevPath.slice(0, fallbackIdx + 1);
+      } else {
+        // benar-benar tidak ada referensi -> biarkan prevPath apa adanya
+        newPath = prevPath.slice();
+      }
+    }
+  }
+
+  // 2) ambil subPath dari lokasi edited_id
+  const editedLoc = findPathIndex(allMessagesId, edited_id);
+  if (editedLoc.outerIndex === -1) {
+    console.warn('[handleChangePath] edited_id not found in allMessagesId -> abort');
+    return prevPath;
+  }
+  const subPath = allMessagesId[editedLoc.outerIndex].slice(editedLoc.innerIndex);
+
+  // 3) gabungkan tanpa duplikat
+  if (newPath.length && subPath.length && newPath[newPath.length - 1] === subPath[0]) {
+    return [...newPath, ...subPath.slice(1)];
+  }
+  return [...newPath, ...subPath];
+});
+
+};
+
+
+  useEffect(() => {
+    console.log("the path",path);
+  }, [path]);
 
   // Global drag events to detect when user starts dragging files
   React.useEffect(() => {
@@ -538,6 +668,9 @@ const ChatIdPage: React.FC = () => {
                   <div className={styles.messageContent}>
                     {message.content}
                   </div>
+                  {message.is_edited && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.id!!, 'edited')}> (edited)</span>)}
+                  {message.edited_from_message_id!! && (<span className={styles.editedLabel}  onClick={() => handleChangePath(message.edited_from_message_id!!, 'edited_from')}> (edited from {message.edited_from_message_id})</span>)}
+
                   {!message.is_user && (
                     <div className={styles.messageActions}>
                       <button className={styles.actionButton}>
