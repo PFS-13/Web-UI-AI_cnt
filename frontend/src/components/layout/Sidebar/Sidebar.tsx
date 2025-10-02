@@ -74,13 +74,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     // TODO: Implement upgrade functionality
   };
 
+  // Function to measure text width
+  const measureTextWidth = (text: string, fontSize: string = '14px', fontFamily: string = 'system-ui, -apple-system, sans-serif') => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.font = `${fontSize} ${fontFamily}`;
+      return context.measureText(text).width;
+    }
+    return 0;
+  };
+
   const handleProfileClick = () => {
     if (!isProfileDropdownOpen && profileSectionRef.current) {
       const rect = profileSectionRef.current.getBoundingClientRect();
+      
+      // Calculate dynamic width based on email length
+      const baseWidth = 240; // Minimum width
+      const emailText = user?.email || '';
+      const emailWidth = measureTextWidth(emailText, '14px') + 80; // Add padding for icon and margins
+      const dynamicWidth = Math.max(baseWidth, emailWidth);
+      
       setDropdownPosition({
         top: `${rect.top - 250}px`, // 8px di atas profile section
         left: `${rect.left}px`,   // Sejajar dengan kiri profile section
-        width: '240px'  // Fixed width untuk konsistensi
+        width: `${dynamicWidth}px`  // Dynamic width based on email length
       });
     }
     setIsProfileDropdownOpen(!isProfileDropdownOpen);
@@ -99,6 +117,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleChatClick = (chatId: string) => {
     // TODO: Navigate to specific chat
     navigate(`/c/${chatId}`);
+  };
+
+  // Function to truncate text and determine if tooltip is needed
+  const truncateTitle = (title: string | null | undefined, maxLength: number = 30) => {
+    // Handle null, undefined, or empty string cases
+    if (!title || typeof title !== 'string') {
+      return { truncated: 'Untitled', needsTooltip: false };
+    }
+    
+    if (title.length <= maxLength) {
+      return { truncated: title, needsTooltip: false };
+    }
+    return { 
+      truncated: title.substring(0, maxLength) + '...', 
+      needsTooltip: true 
+    };
   };
 
   // Close dropdown when clicking outside
@@ -218,15 +252,19 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {chatHistory  ? (
             <div className={styles.chatHistoryList}>
-              {chatHistory.map((chat) => (
-                <button
-                  key={chat.id}
-                  className={`${styles.sidebarButton} ${chat.id == activated_conversation ? styles.sidebarButtonActive : ''}`}
-                  onClick={() => handleChatClick(chat.id)}
-                >
-                  <span>{chat.title}</span>
-                </button>
-              ))}
+              {chatHistory.map((chat) => {
+                const { truncated, needsTooltip } = truncateTitle(chat.title);
+                return (
+                  <button
+                    key={chat.id}
+                    className={`${styles.sidebarButton} ${chat.id == activated_conversation ? styles.sidebarButtonActive : ''}`}
+                    onClick={() => handleChatClick(chat.id)}
+                    title={needsTooltip && chat.title ? chat.title : undefined}
+                  >
+                    <span className={styles.chatTitle}>{truncated}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className={styles.emptyState}>

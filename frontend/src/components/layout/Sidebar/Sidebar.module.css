@@ -184,6 +184,15 @@
   flex-shrink: 0;
 }
 
+/* Chat title truncation */
+.chatTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  flex: 1;
+}
+
 .sidebarButtonMinimized {
   justify-content: flex-start;
   padding: 0.5rem;
@@ -464,9 +473,8 @@
   border: 1px solid #484848;
   border-radius: 0.75rem;
   padding: 0.3rem;
-  width: 240px;
   min-width: 240px;
-  max-width: 240px;
+  max-width: 400px;
   z-index: 9999;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -509,6 +517,9 @@
   font-size: 0.875rem;
   text-align: left;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .dropdownSubtitle {
