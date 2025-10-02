@@ -2,17 +2,16 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar/Sidebar';
 import { UserProfileInfo } from '../../components/common';
 import styles from './Dashboard.module.css';
-import { conversationAPI } from '../../services';
+import { conversationAPI, authAPI } from '../../services';
+import { messageAPI } from '../../services/api/message.api';
+import type { Conversation } from '../../types/chat.types';
+import { useNavigate } from 'react-router';
 
 interface ChatMessage {
   id?: number
   content: string;
   is_user: boolean;
-
 }
-import { authAPI } from '../../services';
-import { useNavigate } from 'react-router';
-import { messageAPI } from '../../services/api/message.api';
 
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -28,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const attachContainerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -54,9 +54,41 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchConversations = async () => {
+      if (!user?.id) {
+        console.log('Dashboard - No user ID available, skipping conversation fetch');
+        return;
+      }
+      
       try {
-        const conversations = await conversationAPI.getConversationsByUserId(user.id);
-        const chatHistory = conversations.map((item: any) => ({
+        const conversationsData = await conversationAPI.getConversationsByUserId(user.id);
+        
+        // Enhanced: Fetch messages for each conversation to enable search
+        const conversationsWithMessages = await Promise.all(
+          conversationsData.map(async (conversation: any) => {
+            try {
+              // Fetch messages for this conversation
+              const messagesResponse = await messageAPI.getMessages(conversation.conversation_id);
+              // Extract messages from ConversationPath array
+              const messages = messagesResponse?.flatMap(path => path.path_messages) || [];
+              return {
+                ...conversation,
+                messages: messages || []
+              };
+            } catch (error) {
+              console.warn(`Failed to fetch messages for conversation ${conversation.conversation_id}:`, error);
+              return {
+                ...conversation,
+                messages: []
+              };
+            }
+          })
+        );
+        
+        // Set conversations for SearchPopup (with messages)
+        setConversations(conversationsWithMessages);
+        
+        // Set chat history for sidebar
+        const chatHistory = conversationsData.map((item: any) => ({
           id: item.conversation_id,
           title: item.title,
           isActive: false
@@ -65,6 +97,8 @@ const Dashboard: React.FC = () => {
         setChatHistory(chatHistory);
       } catch (error) {
         console.error('Error fetching conversations:', error);
+        // Set empty array if API fails
+        setConversations([]);
       }
     };
     fetchConversations();
@@ -269,6 +303,17 @@ const Dashboard: React.FC = () => {
     setIsSidebarMinimized(!isSidebarMinimized);
   };
 
+  const handleSelectConversation = (conversation: Conversation) => {
+    // Navigate to specific conversation
+    window.location.href = `/c/${conversation.conversation_id}`;
+  };
+
+  const handleNewChat = () => {
+    // Navigate to new chat or create new conversation
+    window.location.href = '/dashboard';
+  };
+
+
   const handleShareClick = () => {
     setIsShareModalOpen(true);
   };
@@ -418,7 +463,9 @@ const Dashboard: React.FC = () => {
         onToggle={toggleSidebar}
         user={user}
         chatHistory={chatHistory}
-        
+        conversations={conversations}
+        onSelectConversation={handleSelectConversation}
+        onNewChat={handleNewChat}
       />
 
       {/* Main Content */}
