@@ -23,7 +23,8 @@ export interface CreateMessagePayload {
 
 export interface SendMessageResponse {
   reply: {
-    message_id: number;
+    message_id_server: number;
+    message_id_client: number;
     message: string;
   };
 }
