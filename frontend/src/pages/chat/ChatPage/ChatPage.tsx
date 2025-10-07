@@ -314,6 +314,32 @@ const ChatPage: React.FC = () => {
 
             <div className={styles.inputContainer}>
               <ChatInput
+                inputValue=""
+                onInputChange={() => {}}
+                onKeyDown={() => {}}
+                onSubmit={() => {}}
+                onAttachClick={() => {}}
+                onAttachOptionClick={() => {}}
+                isAttachDropdownOpen={false}
+                dropdownPosition="bottom"
+                attachContainerRef={React.createRef() as React.RefObject<HTMLDivElement>}
+                fileInputRef={React.createRef() as React.RefObject<HTMLInputElement>}
+                hasMessages={messages.length > 0}
+                imagePreviews={[]}
+                selectedImageIndex={null}
+                isModalOpen={false}
+                isDragging={false}
+                isDragOver={false}
+                dropZoneRef={React.createRef() as React.RefObject<HTMLDivElement>}
+                onImageUpload={() => {}}
+                onRemoveImage={() => {}}
+                onOpenImageModal={() => {}}
+                onCloseImageModal={() => {}}
+                onNextImage={() => {}}
+                onPrevImage={() => {}}
+                onDragOver={() => {}}
+                onDragLeave={() => {}}
+                onDrop={() => {}}
                 onSendMessage={handleSendMessage}
                 onTyping={setIsTyping}
                 placeholder="Message ChatGPT"
@@ -329,6 +355,32 @@ const ChatPage: React.FC = () => {
             </div>
             <div className={styles.inputContainer}>
               <ChatInput
+                inputValue=""
+                onInputChange={() => {}}
+                onKeyDown={() => {}}
+                onSubmit={() => {}}
+                onAttachClick={() => {}}
+                onAttachOptionClick={() => {}}
+                isAttachDropdownOpen={false}
+                dropdownPosition="bottom"
+                attachContainerRef={React.createRef() as React.RefObject<HTMLDivElement>}
+                fileInputRef={React.createRef() as React.RefObject<HTMLInputElement>}
+                hasMessages={messages.length > 0}
+                imagePreviews={[]}
+                selectedImageIndex={null}
+                isModalOpen={false}
+                isDragging={false}
+                isDragOver={false}
+                dropZoneRef={React.createRef() as React.RefObject<HTMLDivElement>}
+                onImageUpload={() => {}}
+                onRemoveImage={() => {}}
+                onOpenImageModal={() => {}}
+                onCloseImageModal={() => {}}
+                onNextImage={() => {}}
+                onPrevImage={() => {}}
+                onDragOver={() => {}}
+                onDragLeave={() => {}}
+                onDrop={() => {}}
                 onSendMessage={handleSendMessage}
                 onTyping={setIsTyping}
                 placeholder="Message ChatGPT"

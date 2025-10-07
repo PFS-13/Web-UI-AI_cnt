@@ -1,4 +1,6 @@
 export { default as HomePage } from './HomePage';
-export { default as Dashboard } from './Dashboard/Dashboard';
+// Dashboard component has been replaced by ChatPage
+export { default as RootPage } from './RootPage';
+export { default as ChatPage } from './ChatPage';
 export * from './auth';
 export * from './chat';
