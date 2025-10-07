@@ -43,12 +43,12 @@ export class AuthController {
     const { token } = await this.authService.handleGoogleLogin({ username, email, image_url });
     const frontendUrl = process.env.FRONTEND_URL;
     // TODO: change secure to true in production
-    res.cookie('Authentication', token, {
-      httpOnly: true, 
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 1000,
-    });
+      res.cookie('Authentication', token, {
+        httpOnly: true, 
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 120 * 60 * 1000,
+      });
     return res.redirect(`${frontendUrl}/auth-callback?token=${token}`);
   }
   
@@ -86,14 +86,7 @@ export class AuthController {
   async register(
     @Body() auth_dto: AuthDto,
     @Res({ passthrough: true }) res: Response) {
-    const { accessToken, user_id } = await this.authService.register(auth_dto);
-    // TODO: change secure to true in production
-    res.cookie('Authentication', accessToken, {
-      httpOnly: true,
-      secure: false, 
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 15
-    });
+    const { user_id } = await this.authService.register(auth_dto);
     return { user_id };
   }
 
@@ -111,7 +104,7 @@ export class AuthController {
       httpOnly: true,
       secure: false, 
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 15
+      maxAge: 120 * 60 * 1000,
     });
     return { message: 'Logged in' };
   }
@@ -120,8 +113,20 @@ export class AuthController {
   @Patch('v1/verify-otp')
   @ApiOperation({ summary: 'Verify OTP sent to email' })
   @ApiBody({type : VerifyOtpDto} )
-  async verifyOtp(@Body() verifyOtp: VerifyOtpDto) {
-    return await this.authService.verifyOtp(verifyOtp);
+  async verifyOtp(@Body() verifyOtp: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.verifyOtp(verifyOtp);
+    if (result.accessToken) {
+      // TODO: change secure to true in production
+      res.cookie('Authentication', result.accessToken, {
+      httpOnly: true,
+      secure: false, 
+      sameSite: 'lax',
+      maxAge: 120 * 60 * 1000,
+    });
+    } 
+    
+    return { user_id: result.user_id };
+    
 
   }
   

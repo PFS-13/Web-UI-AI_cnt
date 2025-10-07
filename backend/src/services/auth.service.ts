@@ -106,7 +106,7 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     return { accessToken, user_id: new_user.id };
   }
   
-  async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<{message?: string, user_id?: UUID}> {
+  async verifyOtp({ email, code, token_type }: VerifyOtpDto): Promise<{message?: string, user_id?: UUID, accessToken?: any}> {
   const user = await this.usersService.findByEmail(email);
   if (!user) {
     throw new NotFoundException('Email Not found');
@@ -115,6 +115,9 @@ async createUser({ email, password }: AuthDto): Promise<User> {
 
   if (token_type === TokenType.AUTH) {
     await this.usersService.activate(user.id);
+    const payload = { email: user.email, sub: user.id }; 
+    const accessToken = this.jwtService.sign(payload);
+    return { accessToken };
   }
     return {
       user_id: user.id
