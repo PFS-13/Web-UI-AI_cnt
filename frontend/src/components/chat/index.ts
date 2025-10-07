@@ -4,5 +4,5 @@ export { default as ConversationList } from './ConversationList';
 
 // Types
 export type { ChatMessageProps } from './ChatMessage';
-export type { ChatInputProps } from './ChatInput';
+// ChatInputProps is not exported from ChatInput
 export type { ConversationListProps } from './ConversationList';
