@@ -29,7 +29,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [id]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return null;
   }
 
   if (!user) {
