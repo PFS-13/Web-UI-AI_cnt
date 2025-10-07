@@ -1,37 +1,48 @@
-// src/ProtectedRoute.tsx
-import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "./contexts/AuthContext";
+import React, { useEffect, useState } from "react";
+import { Navigate, useLocation, useParams } from "react-router-dom";
+import { authAPI } from "./services";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
 };
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const { user } = useAuth();
+  const { id } = useParams();
 
-  // 🔒 Belum login → redirect ke /login
+  useEffect(() => {
+    let ignore = false;
+    const checkAuth = async () => {
+      try {
+        const user = await authAPI.getMe(); // pastikan ambil data user
+        if (!ignore) setUser(user);
+      } catch {
+        if (!ignore) setUser(null);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+    checkAuth();
+    return () => { ignore = true; };
+  }, [id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // 🚫 Belum verifikasi email
   if (!user.is_active) {
-    return (
-      <Navigate
-        to="/verification"
-        replace
-        state={{ email: user.email }}
-      />
-    );
+    return <Navigate to="/verification" replace />;
   }
 
-  // 🧩 Belum lengkapi profil (username kosong)
   if (!user.username) {
     return <Navigate to="/tell-us-about-you" replace />;
   }
 
-  // ✅ Lolos semua pengecekan → render halaman
   return <>{children}</>;
 }
