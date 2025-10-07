@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "preview:local": "vite preview --host localhost --port 4173",
-    "preview:docker": "vite preview --host 0.0.0.0 --port 3000"
+    "preview": "vite preview",
+    "preview:local": "vite preview --host localhost",
+    "preview:docker": "vite preview --port 3000"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.2",
