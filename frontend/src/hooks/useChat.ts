@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { messageAPI } from '../services/api/message.api';
 import { useConversation } from './useConversation';
 import { useFileUpload } from './useFileUpload';
+import axios from "axios";
 
 interface ChatMessage {
   id?: number;
@@ -124,10 +125,15 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
           edited_from_message_id: msg.edited_from_message_id
         }));
         setChatMessages(chat_message);
+        setLastChat(path[path.length - 1] || null);
       };
       fetchMessages();
     }
   }, [path]);
+
+  useEffect(() => {
+    console.log("Last chat updated:", lastChat);
+  }, [chatMessages]);
 
   const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
     const seen = new Set<number>();
@@ -164,6 +170,29 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
     }
   };
 
+  // contoh upload multiple files (1 request per file)
+
+async function uploadFiles(files: File[], message_id: number) {
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("message_id", String(message_id));
+
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/attachments/upload`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true, // kalau pakai cookie auth
+      });
+      console.log("Uploaded:", res.data);
+    } catch (err) {
+      console.error("Upload error:", err);
+    }
+  }
+}
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || fileUpload.uploadedImages.length > 0) {
@@ -194,7 +223,7 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
               is_user: false,
             };
             setChatMessages(prev => [...prev, aiMessage]);
-            setLastChat(response.reply.message_id);
+            setLastChat(response.reply.message_id_server);
             setIsLoading(false);
           }, 1000);
           
@@ -202,7 +231,7 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
           navigate(`/c/${newConversation.conversation_id}`);
         }
       } else if (mode === 'existing' && conversationId) {
-        // Continue existing conversation
+        // Continue existing conversation        
         const response = await messageAPI.sendMessage({ 
           content: userMessage.content,
           conversation_id: conversationId,
@@ -211,14 +240,17 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
           parent_message_id: lastChat,
           edited_from_message_id: undefined
         });
-        
+
+        if (fileUpload.uploadedImages.length > 0) {
+          await uploadFiles(fileUpload.uploadedImages, response.reply.message_id_client);
+        }
         setTimeout(() => {
           const aiMessage: ChatMessage = { 
             content: response.reply.message,
             is_user: false,
           };
           setChatMessages(prev => [...prev, aiMessage]);
-          setLastChat(response.reply.message_id);
+          setLastChat(response.reply.message_id_server);
           setIsLoading(false);
         }, 1000);
       }

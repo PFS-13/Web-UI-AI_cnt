@@ -232,7 +232,12 @@ Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistan
     await this.messageRepo.save(assistantMsg);
 
     return {
-      reply: { message_id: assistantMsg.id, message: assistantText },
+      reply: { 
+        message_id_server: assistantMsg.id,
+        message: assistantText,
+        message_id_client: userMsg.id
+       
+      },
     };
   }
 

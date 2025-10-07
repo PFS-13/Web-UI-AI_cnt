@@ -13,7 +13,6 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true); // 👈 tambahan
-
   const emailInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { } = useAuth();
@@ -63,7 +62,7 @@ const Login: React.FC = () => {
       const response = await authAPI.checkEmail(email);
       console.log('Check email response:', response);
       if (response.provider == 'google') {
-        window.location.href = `http://localhost:3001/auth/google?email=${encodeURIComponent(email)}`;
+        window.location.href = `${import.meta.env.VITE_API_URL}/auth/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
         navigate('/input-password', { state: { email } });
       } else {
@@ -78,7 +77,7 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3001/auth/google';
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
   };
 
   const handleMicrosoftLogin = () => {

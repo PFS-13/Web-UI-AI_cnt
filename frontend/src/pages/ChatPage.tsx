@@ -211,7 +211,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
           <MessageList
             messages={chatMessages}
             isLoading={isLoading}
-                 messagesContainerRef={messagesContainerRef as React.RefObject<HTMLDivElement>}
+            messagesContainerRef={messagesContainerRef as React.RefObject<HTMLDivElement>}
           />
         )}
         
