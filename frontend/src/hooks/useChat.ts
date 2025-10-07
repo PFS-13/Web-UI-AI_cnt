@@ -132,7 +132,6 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
   }, [path]);
 
   useEffect(() => {
-    setLastChat(chatMessages.length ? chatMessages[chatMessages.length - 1].id || null : null);
     console.log("Last chat updated:", lastChat);
   }, [chatMessages]);
 
