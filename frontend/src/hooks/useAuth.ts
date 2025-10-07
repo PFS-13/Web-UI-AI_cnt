@@ -1,149 +1,72 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { User, AuthState, LoginCredentials, RegisterCredentials } from '../types/auth.types';
-import { authAPI } from '../services/api';
-import { tokenStorage } from '../services/storage';
+import { useState, useEffect } from 'react';
+import { authAPI } from '../services';
 
-export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    isLoading: true,
-    error: null,
-  });
+interface User {
+  id: string;
+  username?: string;
+  email: string;
+  is_active: boolean;
+  image_url?: string;
+}
 
-  // Initialize auth state from storage
+interface UseAuthReturn {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  logout: () => void;
+  isLoading: boolean;
+  clearError: () => void;
+}
+
+export const useAuth = (): UseAuthReturn => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const userData = await authAPI.getMe();
+      setUser(userData);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setUser(null);
+      setError(error instanceof Error ? error.message : 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        const token = tokenStorage.getToken();
-        const user = tokenStorage.getUser();
-        
-        if (token && user) {
-          setAuthState({
-            user,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } else {
-          setAuthState(prev => ({
-            ...prev,
-            isLoading: false,
-          }));
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        setAuthState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Failed to initialize authentication',
-        }));
-      }
-    };
-
-    initializeAuth();
+    checkAuth();
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    try {
-      // For now, we'll use Google OAuth
-      // In the future, implement local login
-      const googleUrl = await authAPI.getGoogleAuthUrl(credentials.email);
-      window.location.href = googleUrl;
-    } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Login failed',
-      }));
-    }
-  }, []);
+  const refetch = async () => {
+    await checkAuth();
+  };
 
-  const register = useCallback(async (credentials: RegisterCredentials) => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    try {
-      const response = await authAPI.register(credentials);
-      setAuthState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: null,
-      }));
-      return response;
-    } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Registration failed',
-      }));
-      throw error;
-    }
-  }, []);
+  const logout = () => {
+    setUser(null);
+    setError(null);
+    // Clear any stored tokens
+    localStorage.removeItem('token');
+  };
 
-  const verifyOtp = useCallback(async (email: string, code: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    try {
-      const response = await authAPI.verifyOtp({ 
-        email, 
-        code, 
-        token_type: 'auth' as const 
-      });
-      setAuthState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: null,
-      }));
-      return response;
-    } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'OTP verification failed',
-      }));
-      throw error;
-    }
-  }, []);
-
-  const setUser = useCallback((user: User, token: string) => {
-    tokenStorage.setUser(user);
-    tokenStorage.setToken(token);
-    
-    setAuthState({
-      user,
-      token,
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-    });
-  }, []);
-
-  const logout = useCallback(() => {
-    tokenStorage.clear();
-    setAuthState({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-    });
-  }, []);
-
-  const clearError = useCallback(() => {
-    setAuthState(prev => ({ ...prev, error: null }));
-  }, []);
+  const clearError = () => {
+    setError(null);
+  };
 
   return {
-    ...authState,
-    login,
-    register,
-    verifyOtp,
-    setUser,
+    user,
+    loading,
+    isAuthenticated: !!user,
+    error,
+    refetch,
     logout,
+    isLoading: loading,
     clearError,
   };
 };

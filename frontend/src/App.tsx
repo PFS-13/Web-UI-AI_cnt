@@ -1,19 +1,23 @@
 // src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { HomePage, Login, Register, Verification, AuthCallback, TellUsAboutYou, ResetPassword, InputPassword, NewPassword, Dashboard, ChatPage, ConversationHistory } from './pages';
+import { Login, Register, Verification, AuthCallback, TellUsAboutYou, ResetPassword, InputPassword, NewPassword, ConversationHistory } from './pages';
+import RootPage from './pages/RootPage';
+import ChatPage from './pages/ChatPage';
 import styles from './App.module.css';
 import ProtectedRoute from './ProtectedRoute';
-import ChatIdPage from './pages/chat/[id]/Page';
 import FileUpload from './FileUpload';
 // import ChangePasswordPage from './forgotpassword';
+
 const App: React.FC = () => {
   return (
     <Router>
       <div className={styles.app}>
         <Routes>
-          {/* Semua halaman sekarang bisa diakses tanpa syarat autentikasi */}
-          <Route path="/" element={<HomePage />} />
+          {/* Root route dengan conditional rendering */}
+          <Route path="/" element={<RootPage />} />
+          
+          {/* Auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verification" element={<Verification />} />
@@ -22,25 +26,21 @@ const App: React.FC = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/input-password" element={<InputPassword />} />
           <Route path="/new-password" element={<NewPassword />} />
+          
+          {/* Chat routes */}
+          <Route path="/c/:id" element={
+            <ProtectedRoute>
+              <ChatPage mode="existing" />
+            </ProtectedRoute>
+          } />
+          
+          {/* Other routes */}
           <Route path="/file-upload" element={<FileUpload messageId={123} />} />
-
-
-          <Route path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }></Route>
-
-            <Route path="/c/:id" element={
-                <ProtectedRoute>
-                  <ChatIdPage />
-                </ProtectedRoute>
-              } />
-          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat" element={<ChatPage mode="new" />} />
           <Route path="/conversations" element={<ConversationHistory />} />
-          {/* Arahkan semua rute yang tidak cocok ke halaman dashboard */}
-          {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
+          
+          {/* Legacy dashboard route - redirect to root */}
+          <Route path="/dashboard" element={<RootPage />} />
         </Routes>
       </div>
     </Router>
