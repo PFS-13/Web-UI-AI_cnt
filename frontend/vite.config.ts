@@ -14,6 +14,7 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
-    strictPort: true
+    strictPort: true,
+    allowedHosts: ['cintia.cinte.id','cintia.cnt.id']
   }
 })
