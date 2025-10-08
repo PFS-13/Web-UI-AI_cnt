@@ -35,7 +35,7 @@ const MessageList: React.FC<MessageListProps> = ({
           className={`${styles.message} ${message.is_user ? styles.userMessage : styles.aiMessage}`}
         >
           <div className={styles.messageContent}>
-             {message.id} || {message.content}
+             {message.content}
           </div>
           
           {/* Edit indicators */}
