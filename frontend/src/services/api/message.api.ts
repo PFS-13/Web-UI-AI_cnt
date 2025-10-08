@@ -73,6 +73,13 @@ class MessageApi {
     return this.request(`/message/v1/messages/${message_id}/edited-id`, { method: 'GET' });
   }
 
+  async editMessage(message_id: number): Promise<{ success: boolean }> {
+    return this.request(`/message/v1/messages/${message_id}/is-edited`, {
+      method: 'PATCH'
+  });
+
+}
+
 }
 
 export const messageAPI = new MessageApi();

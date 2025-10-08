@@ -126,7 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const truncateTitle = (title: string | null | undefined, maxLength: number = 30) => {
     // Handle null, undefined, or empty string cases
     if (!title || typeof title !== 'string') {
-      return { truncated: 'Untitled', needsTooltip: false };
+      return { truncated: 'New Chat', needsTooltip: false };
     }
     
     if (title.length <= maxLength) {
@@ -135,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return { 
       truncated: title.substring(0, maxLength) + '...', 
       needsTooltip: true 
-    };
+  };
   };
 
   // Handle conversation menu click

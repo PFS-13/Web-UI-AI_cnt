@@ -50,7 +50,8 @@ interface UseChatReturn {
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
-  handleChangePath: (messageId: number, type: string) => void;
+  handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
+  handleEditMessage: (messageId: number, content: string) => void;
   handleSelectConversation: (conversation: any) => void;
   handleNewChat: () => void;
   scrollToBottom: () => void;
@@ -85,8 +86,6 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
   // Custom hooks
   const fileUpload = useFileUpload();
   const conversation = useConversation(userId);
-
-  // Load messages for existing conversation
   useEffect(() => {
     if (mode === 'existing' && conversationId) {
       const fetchMessages = async () => {
@@ -130,9 +129,6 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
     }
   }, [path]);
 
-  useEffect(() => {
-    console.log("Last chat updated:", lastChat);
-  }, [chatMessages]);
 
   const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
     const seen = new Set<number>();
@@ -149,6 +145,7 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
     }
   };
 
+  
 
 
 const findPathIndex = (arrays: number[][], edited_id: number) => {
@@ -174,80 +171,121 @@ const findPathIndex = (arrays: number[][], edited_id: number) => {
   return { outerIndex: -1, innerIndex: -1 };
 };
 
+const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) => {
+  setAllMessagesId(prev => {
+    if (messageId === null) {
+      return [...prev, newValues];
+    }
 
-const handleChangePath = async (message_id: number, type: string) => {
+    // kalau bukan null → tambahkan ke group yang mengandung messageId
+    return prev.map(group =>
+      group.includes(messageId)
+        ? [...group, ...newValues]
+        : group
+    );
+  });
+};
+
+
+
+
+const handleChangePath = async (message_id: number,  type: string, edited_from_message_id?: number) => {
+  console
   let res = null;
-  if (type === 'edited') {
+  if (type === 'next') {
     res = await messageAPI.getEditedMessageId(message_id);
   } else {
-    res = { edited_id: message_id };
+    res = {edited_id: edited_from_message_id || -1};
   }
+  if (res === null || res.edited_id === -1) return;
   const edited_id = res.edited_id;
+  console.log("the message id", message_id);
   console.log("the edited id", edited_id);
 
   const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
   console.log("the index", { outerIndex, innerIndex });
-
+  console.log("the all message id", allMessagesId);
   if (outerIndex === -1 || innerIndex === -1) return;
-  setPath(prevPath => {
-  console.debug('[handleChangePath] prevPath:', prevPath);
-
-  // 1) coba cari message_id di prevPath
-  const messagePos = prevPath.indexOf(message_id);
-  console.debug('messagePos in prevPath =', messagePos);
-
-  let newPath: number[] = [];
-
-  if (messagePos !== -1) {
-    // pesan ada di prevPath -> potong sampai sebelum message_id
-    newPath = prevPath.slice(0, messagePos);
-  } else {
-    // pesan TIDAK ada di prevPath -> cari lokasinya di allMessagesId
-    const msgLoc = findPathIndex(allMessagesId, message_id);
-    console.debug('msgLoc from allMessagesId =', msgLoc);
-
-    if (msgLoc.outerIndex !== -1) {
-      // bangun newPath dari struktur sumber sampai message_id (inklusif)
-      newPath = allMessagesId[msgLoc.outerIndex].slice(0, msgLoc.innerIndex + 1);
-    } else {
-      // fallback: coba cari elemen terakhir di prevPath yang ada di allMessagesId
-      let fallbackIdx = -1;
-      for (let i = prevPath.length - 1; i >= 0; i--) {
-        const check = findPathIndex(allMessagesId, prevPath[i]);
-        if (check.outerIndex !== -1) {
-          fallbackIdx = i;
-          break;
-        }
-      }
-      if (fallbackIdx !== -1) {
-        newPath = prevPath.slice(0, fallbackIdx + 1);
-      } else {
-        // benar-benar tidak ada referensi -> biarkan prevPath apa adanya
-        newPath = prevPath.slice();
-      }
-    }
+  const currentPath = allMessagesId[outerIndex]
+  if (type === 'next' && innerIndex + 1 < allMessagesId[outerIndex].length) {
+  const index = path.indexOf(message_id);
+  if (index !== -1) {
+    path.splice(index);
   }
-
-  // 2) ambil subPath dari lokasi edited_id
-  const editedLoc = findPathIndex(allMessagesId, edited_id);
-  if (editedLoc.outerIndex === -1) {
-    console.warn('[handleChangePath] edited_id not found in allMessagesId -> abort');
-    return prevPath;
+  setPath(prev => [...prev, ...currentPath]);
+}else {
+  const index = path.indexOf(message_id);
+  if (index !== -1) {
+    path.splice(index);
   }
-  const subPath = allMessagesId[editedLoc.outerIndex].slice(editedLoc.innerIndex);
+  const filtered = currentPath.filter(num => !path.includes(num));
+  setPath(prev => [...prev, ...filtered]);
+}
 
-  // 3) gabungkan tanpa duplikat
-  if (newPath.length && subPath.length && newPath[newPath.length - 1] === subPath[0]) {
-    return [...newPath, ...subPath.slice(1)];
-  }
-  return [...newPath, ...subPath];
-});
+  console.log("change-path",path)
+  console.log("all-id",allMessagesId)
 
 };
 
+const handleEditMessage = async (messageId: number, content: string) => {
+  console.log(chatMessages);
+  const index = path.indexOf(messageId);
+  if (index !== -1) {
+    path.splice(index);
+  }
+
+  const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
+  if (index_chat !== -1) {
+    chatMessages.splice(index_chat);
+  }
+
+  const index_value_before = path.indexOf(messageId);
+  const value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
+  if (conversationId === undefined) {
+    console.error("Cannot edit message: conversation isnt found");
+    return;
+  }
+    await messageAPI.editMessage(messageId);
+    const userMessage: ChatMessage = {
+        content: content,
+        is_user: true,
+        edited_from_message_id: messageId
+      };
+    setChatMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    const response = await messageAPI.sendMessage({ 
+          content: userMessage.content,
+          conversation_id: conversationId,
+          is_user: true,
+          is_attach_file: fileUpload.uploadedImages.length > 0,
+          parent_message_id: value_before,
+          edited_from_message_id: messageId
+        });
+
+        setChatMessages(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (lastIndex >= 0) {updated[lastIndex] = {
+              ...updated[lastIndex],
+              id: response.reply.message_id_client,};}return updated;});
+        setTimeout(() => {
+          const aiMessage: ChatMessage = { 
+            content: response.reply.message,
+            is_user: false,
+          };
+          addValuesToMessageGroup(null, [response.reply.message_id_client, response.reply.message_id_server]);
+          setChatMessages(prev => [...prev, aiMessage]);
+          setLastChat(response.reply.message_id_server);
+          setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
+          setIsLoading(false);
+        }, 1000);
+}
+// }
+
+
 
   useEffect(() => {
-    console.log("the path",path);
+    console.log("the path", path);
   }, [path]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -303,7 +341,7 @@ async function uploadFiles(files: File[], message_id: number) {
       };
       setInputValue('');
       setChatMessages(prev => [...prev, userMessage]);
-      
+      setIsLoading(true);
       if (mode === 'new' && userId) {
         // Create new conversation
         const newConversation = await conversation.createNewConversation(userId);
@@ -316,16 +354,25 @@ async function uploadFiles(files: File[], message_id: number) {
             parent_message_id: null,
             edited_from_message_id: null
           });
+
+          setChatMessages(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (lastIndex >= 0) {updated[lastIndex] = {
+              ...updated[lastIndex],
+              id: response.reply.message_id_client,};}return updated;});
           
-          setTimeout(() => {
+          // setTimeout(() => {
             const aiMessage: ChatMessage = { 
               content: response.reply.message,
               is_user: false,
             };
+            addValuesToMessageGroup(lastChat || -1, [response.reply.message_id_client, response.reply.message_id_server]);
+
             setChatMessages(prev => [...prev, aiMessage]);
             setLastChat(response.reply.message_id_server);
             setIsLoading(false);
-          }, 1000);
+          // }, 1000);
           
           // Navigate to new conversation
           navigate(`/c/${newConversation.conversation_id}`);
@@ -341,18 +388,33 @@ async function uploadFiles(files: File[], message_id: number) {
           edited_from_message_id: undefined
         });
 
+        setChatMessages(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (lastIndex >= 0) {
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              id: response.reply.message_id_client,
+            };
+          }
+          return updated;
+        });
+
         if (fileUpload.uploadedImages.length > 0) {
           await uploadFiles(fileUpload.uploadedImages, response.reply.message_id_client);
         }
-        setTimeout(() => {
+        // setTimeout(() => {
           const aiMessage: ChatMessage = { 
             content: response.reply.message,
             is_user: false,
           };
+
+          addValuesToMessageGroup(lastChat || -1, [response.reply.message_id_client, response.reply.message_id_server]);
           setChatMessages(prev => [...prev, aiMessage]);
           setLastChat(response.reply.message_id_server);
+          setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
           setIsLoading(false);
-        }, 1000);
+        // }, 1000);
       }
       
       // Clear input and images
@@ -444,6 +506,7 @@ async function uploadFiles(files: File[], message_id: number) {
     handleKeyDown,
     handleSubmit,
     handleChangePath,
+    handleEditMessage,
     handleSelectConversation,
     handleNewChat,
     scrollToBottom,

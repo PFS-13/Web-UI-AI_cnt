@@ -28,6 +28,10 @@ export class ConversationService {
   async findAllByUserId(user_id: UUID): Promise<Conversation[]> {
     return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }
+  // async isConversationNew(conversation_id: UUID): Promise<{ isNew: boolean }> {
+  //   const count = await this.conversationsRepository.count({ where: { conversation_id } });
+  //   return { isNew: count === 0 };
+  // }
 
   async create(conversation: createConversationDto,): Promise<{ message?: string; conversation_id?: UUID; }> {
     try {

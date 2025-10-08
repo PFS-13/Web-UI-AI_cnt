@@ -130,13 +130,17 @@ export class MessageService {
   return contextJson;
 }
 
+async isConversationNew(conversation_id: UUID): Promise<{ isNew: boolean, count: number }> {
+  const count = await this.messageRepo.count({ where: { conversation_id } });
+  return { isNew: count === 0 , count};
+}
   // Ganti method ask di MessageService
   async ask(dto: createMessageDto) {
+    const {isNew, count} = await this.isConversationNew(dto.conversation_id);
     const userMsg = this.messageRepo.create(dto);
     await this.messageRepo.save(userMsg);
-
-    if (dto.parent_message_id == null) {
-      this.logger.debug('No parent_message_id, extracting context for message id=' + userMsg.id);
+    console.log('Is conversation new? ' + isNew + ' (message count=' + count + ')');
+    if (isNew) {
       try {
         await this.extractContextAndConsoleLog(userMsg);
       } catch (e) {
@@ -426,10 +430,11 @@ async findByIds(messageIds: number[]) {
     return { edited_id: id_edited.id };
   }
 
-  // async findBeforeEditedId(message_id: number) {
-  //   const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
-  //   if (!msg) throw new Error('Message not found');
-  //   return { edited_id: msg.id };
-  // }
-
+  async setEditedId(message_id: number) {
+    const msg = await this.messageRepo.findOne({ where: { id: message_id } });
+    if (!msg) throw new Error('Message not found');
+    msg.is_edited = true;
+    await this.messageRepo.save(msg);
+    return { success: true };
+  }
 }
