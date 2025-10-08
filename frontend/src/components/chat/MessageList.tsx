@@ -14,7 +14,7 @@ interface MessageListProps {
   isLoading: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement>;
   onMessageAction?: (messageId: number, action: string) => void;
-  onEditMessage?: (messageId: number) => void;
+  onEditMessage?: (messageId: number, type: string) => void;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -40,7 +40,7 @@ const MessageList: React.FC<MessageListProps> = ({
             {message.is_edited && (
               <span 
                 className={styles.editedLabel}
-                onClick={() => onEditMessage?.(message.id!)}
+                onClick={() => onEditMessage?.(message.id!, 'edited')}
               >
                 (edited)
               </span>
@@ -48,7 +48,7 @@ const MessageList: React.FC<MessageListProps> = ({
             {message.edited_from_message_id && (
               <span 
                 className={styles.editedLabel}
-                onClick={() => onEditMessage?.(message.edited_from_message_id!)}
+                onClick={() => onEditMessage?.(message.edited_from_message_id!, 'prev')}
               >
                 (edited from {message.edited_from_message_id})
               </span>

@@ -26,6 +26,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     handleInputChange,
     handleKeyDown,
     handleSubmit,
+    handleChangePath,
     handleSelectConversation,
     handleNewChat,
     // File upload
@@ -212,6 +213,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
             messages={chatMessages}
             isLoading={isLoading}
             messagesContainerRef={messagesContainerRef as React.RefObject<HTMLDivElement>}
+            onEditMessage={handleChangePath}
           />
         )}
         
