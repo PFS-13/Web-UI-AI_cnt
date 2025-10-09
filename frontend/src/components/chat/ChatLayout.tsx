@@ -12,6 +12,7 @@ interface ChatLayoutProps {
   onToggleSidebar: () => void;
   onSelectConversation: (conversation: any) => void;
   onNewChat: () => void;
+  onDeleteConversation: (conversationId: string) => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -24,6 +25,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onToggleSidebar,
   onSelectConversation,
   onNewChat,
+  onDeleteConversation
 }) => {
   return (
     <div className={styles.container}>
@@ -37,6 +39,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         conversations={conversations}
         onSelectConversation={onSelectConversation}
         onNewChat={onNewChat}
+        onDeleteConversation={onDeleteConversation}
       />
 
       {/* Main Content */}

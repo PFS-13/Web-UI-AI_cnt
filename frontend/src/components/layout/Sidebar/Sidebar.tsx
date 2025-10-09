@@ -18,6 +18,7 @@ export interface SidebarProps {
   conversations?: Conversation[];
   onSelectConversation?: (conversation: Conversation) => void;
   onNewChat?: () => void;
+  onDeleteConversation: (conversationId: string) => void;
 }
 
 
@@ -29,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activated_conversation, 
   conversations = [], 
   onSelectConversation, 
-  onNewChat 
+  onNewChat,
+  onDeleteConversation
 }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -164,7 +166,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         break;
       case 'delete':
         // TODO: Implement delete functionality
-        conversationAPI.deleteConversation(chatId)
+        // conversationAPI.deleteConversation(chatId)
+        onDeleteConversation(chatId);
         break;
     }
     setOpenConversationMenuId(null);
