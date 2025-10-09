@@ -29,6 +29,7 @@ export class ConversationService {
     return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }
 
+
   async create(conversation: createConversationDto,): Promise<{ message?: string; conversation_id?: UUID; }> {
     try {
       return await this.dataSource.transaction(async (manager) => {

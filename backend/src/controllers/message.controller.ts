@@ -41,4 +41,13 @@ export class MessageController {
       return await this.messageService.findEditedId(message_id);
     }
 
+    @ApiOperation({ summary: 'Set message is edited' })
+    @ApiBody({type: createMessageDto})
+    @Patch('v1/messages/:message_id/is-edited')
+    async setEditedMessage(@Param('message_id') message_id: number) {
+      return await this.messageService.setEditedId(message_id);
+    }
+
+    
+
   }
