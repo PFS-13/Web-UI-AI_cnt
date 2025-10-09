@@ -77,9 +77,14 @@ class MessageApi {
     return this.request(`/message/v1/messages/${message_id}/is-edited`, {
       method: 'PATCH'
   });
-
 }
 
+async getChainedMessage(message_id: number): Promise<{ chain: number[] }> {
+    return this.request(`/message/v1/messages/${message_id}/chained-message`, {
+      method: 'GET'
+  });
+
+}
 }
 
 export const messageAPI = new MessageApi();

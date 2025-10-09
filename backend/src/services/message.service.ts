@@ -437,4 +437,24 @@ async findByIds(messageIds: number[]) {
     await this.messageRepo.save(msg);
     return { success: true };
   }
+
+  async findEditedChainPath(message_id: number): Promise<number[]> {
+  const sql = `
+    WITH RECURSIVE edit_chain AS (
+    SELECT id, edited_from_message_id, 0 AS depth
+      FROM public.message
+    WHERE id = $1
+    UNION ALL
+    SELECT m.id, m.edited_from_message_id, ec.depth + 1
+    FROM message m
+    JOIN edit_chain ec ON m.edited_from_message_id = ec.id
+  )
+  SELECT array_agg(id ORDER BY depth) AS ids
+  FROM edit_chain;
+  `;
+
+  const result = await this.messageRepo.manager.query(sql, [message_id]);
+  return result.length > 0 ? result[0].ids : [];
+}
+
 }

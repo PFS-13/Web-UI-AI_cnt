@@ -48,6 +48,13 @@ export class MessageController {
       return await this.messageService.setEditedId(message_id);
     }
 
+    @ApiOperation({ summary: 'Set message is edited' })
+    @ApiBody({type: createMessageDto})
+    @Get('v1/messages/:message_id/chained-message')
+    async getChainedMessage(@Param('message_id') message_id: number) {
+      return await this.messageService.findEditedChainPath(message_id);
+    }
+
     
 
   }
