@@ -15,7 +15,7 @@ interface MessageListProps {
   messagesContainerRef: React.RefObject<HTMLDivElement>;
   onMessageAction?: (messageId: number, action: string) => void;
   onChangePath?: (messageId: number, type: string, edited_from_message_id?: number) => void;
-  OnEditMessage?: (messageId: number, content: string) => void;
+  OnEditMessage?: (messageId: number, content: string, is_edited?: boolean) => void;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -35,7 +35,7 @@ const MessageList: React.FC<MessageListProps> = ({
           className={`${styles.message} ${message.is_user ? styles.userMessage : styles.aiMessage}`}
         >
           <div className={styles.messageContent}>
-             {message.content}
+             {message.id} || {message.content}
           </div>
           
           {/* Edit indicators */}
@@ -61,7 +61,7 @@ const MessageList: React.FC<MessageListProps> = ({
             <div className={styles.messageActions}>
               <button 
                 className={styles.actionButton}
-                onClick={() => OnEditMessage?.(message.id!, "Hewan apa yang berkaki 6?")}
+                onClick={() => OnEditMessage?.(message.id!, "Hewan apa yang berkaki 6?", message.is_edited)}
                 title="Edit"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

@@ -51,7 +51,7 @@ interface UseChatReturn {
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
-  handleEditMessage: (messageId: number, content: string) => void;
+  handleEditMessage: (messageId: number, content: string, is_edited?: boolean) => void;
   handleSelectConversation: (conversation: any) => void;
   handleNewChat: () => void;
   scrollToBottom: () => void;
@@ -228,8 +228,19 @@ const handleChangePath = async (message_id: number,  type: string, edited_from_m
 
 };
 
-const handleEditMessage = async (messageId: number, content: string) => {
-  console.log(chatMessages);
+const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
+  let value_before = null;
+  let edited_from = messageId
+  if (is_edited){
+    const chain = await messageAPI.getChainedMessage(messageId);
+    edited_from = Array.isArray(chain) && chain.length > 0 ? chain.at(-1) // atau chain[chain.length - 1]
+    : messageId;    
+  }
+    const index_value_before = path.indexOf(messageId);
+    value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
+
+
+  
   const index = path.indexOf(messageId);
   if (index !== -1) {
     path.splice(index);
@@ -240,17 +251,15 @@ const handleEditMessage = async (messageId: number, content: string) => {
     chatMessages.splice(index_chat);
   }
 
-  const index_value_before = path.indexOf(messageId);
-  const value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
   if (conversationId === undefined) {
     console.error("Cannot edit message: conversation isnt found");
     return;
   }
-    await messageAPI.editMessage(messageId);
+    await messageAPI.editMessage(edited_from);
     const userMessage: ChatMessage = {
         content: content,
         is_user: true,
-        edited_from_message_id: messageId
+        edited_from_message_id: edited_from
       };
     setChatMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
@@ -260,7 +269,7 @@ const handleEditMessage = async (messageId: number, content: string) => {
           is_user: true,
           is_attach_file: fileUpload.uploadedImages.length > 0,
           parent_message_id: value_before,
-          edited_from_message_id: messageId
+          edited_from_message_id: edited_from
         });
 
         setChatMessages(prev => {
@@ -281,7 +290,6 @@ const handleEditMessage = async (messageId: number, content: string) => {
           setIsLoading(false);
         }, 1000);
 }
-// }
 
 
 
