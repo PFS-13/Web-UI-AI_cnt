@@ -12,6 +12,7 @@ interface UseConversationReturn {
   createNewConversation: (userId: string) => Promise<Conversation | null>;
   selectConversation: (conversationId: string) => void;
   setActiveConversation: (conversationId: string) => void;
+  deleteConversation: (conversationId: string) => Promise<boolean>;
 }
 
 export const useConversation = (userId?: string): UseConversationReturn => {
@@ -75,6 +76,20 @@ export const useConversation = (userId?: string): UseConversationReturn => {
     }
   };
 
+  const deleteConversation = async (conversationId: string): Promise<boolean> => {
+    try {
+      await conversationAPI.deleteConversation(conversationId);
+      // Refresh conversations list
+      const new_chatHistory = chatHistory.filter(item => item.id !== conversationId);
+      setChatHistory(new_chatHistory);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete conversation');
+      return false;
+    }
+  };  
+
   const createNewConversation = async (userId: string): Promise<Conversation | null> => {
     try {
       const newConversation = await conversationAPI.createConversation({ user_id: userId });
@@ -130,5 +145,6 @@ export const useConversation = (userId?: string): UseConversationReturn => {
     createNewConversation,
     selectConversation,
     setActiveConversation,
+    deleteConversation,
   };
 };

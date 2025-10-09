@@ -55,6 +55,7 @@ interface UseChatReturn {
   handleSelectConversation: (conversation: any) => void;
   handleNewChat: () => void;
   scrollToBottom: () => void;
+  handleDeleteConversation: (conversationId: string) => void;
   
   // File upload actions
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -330,6 +331,16 @@ async function uploadFiles(files: File[], message_id: number) {
   }
 }
 
+const handleDeleteConversation = async (conversationId: string) => {
+  console.log("delete conversation", conversationId);
+  try {
+    await conversation.deleteConversation(conversationId);
+  }
+  catch (error) {
+    console.error('Failed to delete conversation:', error);
+  }
+}
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -510,6 +521,7 @@ async function uploadFiles(files: File[], message_id: number) {
     handleSelectConversation,
     handleNewChat,
     scrollToBottom,
+    handleDeleteConversation,
     
     // File upload actions (re-exported for convenience)
     handleImageUpload: fileUpload.handleImageUpload,

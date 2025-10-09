@@ -30,6 +30,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     handleSelectConversation,
     handleNewChat,
     handleEditMessage,
+    handleDeleteConversation,
     // File upload
     imagePreviews,
     selectedImageIndex,
@@ -179,6 +180,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
       onToggleSidebar={() => setIsSidebarMinimized(!isSidebarMinimized)}
       onSelectConversation={handleSelectConversation}
       onNewChat={handleNewChat}
+      onDeleteConversation={handleDeleteConversation}
     >
       {/* Top Bar */}
       <header className={styles.topBar}>
