@@ -130,13 +130,17 @@ export class MessageService {
   return contextJson;
 }
 
+async isConversationNew(conversation_id: UUID): Promise<{ isNew: boolean, count: number }> {
+  const count = await this.messageRepo.count({ where: { conversation_id } });
+  return { isNew: count === 0 , count};
+}
   // Ganti method ask di MessageService
   async ask(dto: createMessageDto) {
+    const {isNew, count} = await this.isConversationNew(dto.conversation_id);
     const userMsg = this.messageRepo.create(dto);
     await this.messageRepo.save(userMsg);
-
-    if (dto.parent_message_id == null) {
-      this.logger.debug('No parent_message_id, extracting context for message id=' + userMsg.id);
+    console.log('Is conversation new? ' + isNew + ' (message count=' + count + ')');
+    if (isNew) {
       try {
         await this.extractContextAndConsoleLog(userMsg);
       } catch (e) {
@@ -426,10 +430,31 @@ async findByIds(messageIds: number[]) {
     return { edited_id: id_edited.id };
   }
 
-  // async findBeforeEditedId(message_id: number) {
-  //   const msg = await this.messageRepo.findOne({ select: { id: true }, where: { id: message_id } });
-  //   if (!msg) throw new Error('Message not found');
-  //   return { edited_id: msg.id };
-  // }
+  async setEditedId(message_id: number) {
+    const msg = await this.messageRepo.findOne({ where: { id: message_id } });
+    if (!msg) throw new Error('Message not found');
+    msg.is_edited = true;
+    await this.messageRepo.save(msg);
+    return { success: true };
+  }
+
+  async findEditedChainPath(message_id: number): Promise<number[]> {
+  const sql = `
+    WITH RECURSIVE edit_chain AS (
+    SELECT id, edited_from_message_id, 0 AS depth
+      FROM public.message
+    WHERE id = $1
+    UNION ALL
+    SELECT m.id, m.edited_from_message_id, ec.depth + 1
+    FROM message m
+    JOIN edit_chain ec ON m.edited_from_message_id = ec.id
+  )
+  SELECT array_agg(id ORDER BY depth) AS ids
+  FROM edit_chain;
+  `;
+
+  const result = await this.messageRepo.manager.query(sql, [message_id]);
+  return result.length > 0 ? result[0].ids : [];
+}
 
 }

@@ -29,6 +29,7 @@ export class ConversationService {
     return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }
 
+
   async create(conversation: createConversationDto,): Promise<{ message?: string; conversation_id?: UUID; }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
@@ -97,17 +98,12 @@ export class ConversationService {
 
   async delete(conversation_id: UUID): Promise<{ message: string }> {
   try {
-    return await this.dataSource.transaction(async (manager) => {
-      const repo = manager.getRepository(Conversation);
-
-      const existing = await repo.findOne({ where: { conversation_id } });
-      if (!existing) {
-        throw new Error('Conversation not found');
-      }
-      await repo.delete({ conversation_id });
-
-      return { message: 'Conversation deleted successfully' };
-    });
+    const existing = await this.conversationsRepository.findOne({ where: { conversation_id } });
+    if (!existing) {
+      throw new Error('Conversation not found');
+    }
+    await this.conversationsRepository.delete({ conversation_id });
+    return { message: 'Conversation deleted successfully' };
   } catch (error) {
     return { message: `Failed to delete conversation: ${error.message}` };
   }

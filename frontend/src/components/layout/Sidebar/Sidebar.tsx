@@ -18,6 +18,7 @@ export interface SidebarProps {
   conversations?: Conversation[];
   onSelectConversation?: (conversation: Conversation) => void;
   onNewChat?: () => void;
+  onDeleteConversation: (conversationId: string) => void;
 }
 
 
@@ -29,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activated_conversation, 
   conversations = [], 
   onSelectConversation, 
-  onNewChat 
+  onNewChat,
+  onDeleteConversation
 }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -126,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const truncateTitle = (title: string | null | undefined, maxLength: number = 30) => {
     // Handle null, undefined, or empty string cases
     if (!title || typeof title !== 'string') {
-      return { truncated: 'Untitled', needsTooltip: false };
+      return { truncated: 'New Chat', needsTooltip: false };
     }
     
     if (title.length <= maxLength) {
@@ -135,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return { 
       truncated: title.substring(0, maxLength) + '...', 
       needsTooltip: true 
-    };
+  };
   };
 
   // Handle conversation menu click
@@ -164,7 +166,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         break;
       case 'delete':
         // TODO: Implement delete functionality
-        conversationAPI.deleteConversation(chatId)
+        // conversationAPI.deleteConversation(chatId)
+        onDeleteConversation(chatId);
         break;
     }
     setOpenConversationMenuId(null);
