@@ -105,6 +105,7 @@ async sendMessage(message: CreateMessagePayload, file?: File): Promise<SendMessa
   if (file) {
     formData.append('file', file);
   }
+  console.log('Sending message with payload:', message, 'and file:', file);
 
   // IMPORTANT: don't set Content-Type header — let fetch/browser set it
   return this.request('/message/v1/messages/create', {

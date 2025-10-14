@@ -360,6 +360,7 @@ const handleDeleteConversation = async (conversationId: string) => {
       setInputValue('');
       setChatMessages(prev => [...prev, userMessage]);
       setIsLoading(true);
+      console.log("the last chat", fileUpload.uploadedImages[0]);
       if (mode === 'new' && userId) {
         // Create new conversation
         const newConversation = await conversation.createNewConversation(userId);
@@ -397,6 +398,7 @@ const handleDeleteConversation = async (conversationId: string) => {
         }
       } else if (mode === 'existing' && conversationId) {
         // Continue existing conversation        
+        console.log("fILE YANG ", fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
         const response = await messageAPI.sendMessage({ 
           content: userMessage.content,
           conversation_id: conversationId,

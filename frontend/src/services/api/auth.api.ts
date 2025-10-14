@@ -13,6 +13,18 @@ class AuthAPI {
   private isRefreshing = false;
   private refreshPromise: Promise<Response> | null = null;
 
+  // Hanya halaman ini yang redirect ke login bila refresh gagal
+  private protectedPaths = [
+    '/chat',
+    '/c/',
+    '/conversations',
+    '/file-upload',
+  ];
+
+  private isProtectedPath(path: string): boolean {
+    return this.protectedPaths.some(p => path.startsWith(p));
+  }
+
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
@@ -27,7 +39,7 @@ class AuthAPI {
     let response = await fetch(url, config);
 
     if (response.status === 401) {
-      // Kalau refresh sedang berlangsung → tunggu dulu
+      // Jika refresh sedang berlangsung, tunggu dulu
       if (this.isRefreshing && this.refreshPromise) {
         await this.refreshPromise;
         response = await fetch(url, config);
@@ -42,14 +54,20 @@ class AuthAPI {
         this.isRefreshing = false;
         this.refreshPromise = null;
 
+        const currentPath = window.location.pathname;
+        const isProtected = this.isProtectedPath(currentPath);
+
         if (refreshResponse.ok) {
-          // refresh berhasil → ulang request asli
+          // refresh token sukses → ulang request
           response = await fetch(url, config);
         } else {
-          // refresh gagal → redirect sekali saja
-          if (window.location.pathname !== '/login') {
-            console.warn("Refresh token expired. Redirecting to login...");
+          // refresh gagal → hanya untuk halaman protected
+          if (isProtected) {
+            console.warn('[Auth] Refresh token expired, redirecting to login...');
             window.location.replace('/login');
+          } else {
+            // Non-protected route, jangan spam error
+            console.info('[Auth] Unauthorized (unprotected path), ignoring 401.');
           }
           throw new Error('Refresh token expired');
         }
@@ -59,7 +77,15 @@ class AuthAPI {
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
 
-    if (!response.ok) throw data;
+    if (!response.ok) {
+      const currentPath = window.location.pathname;
+      // Hanya log error kalau sedang di halaman protected
+      if (this.isProtectedPath(currentPath)) {
+        console.error(`[Auth] Request failed: ${response.status} ${response.statusText}`, data);
+      }
+      throw data;
+    }
+
     return data;
   }
 

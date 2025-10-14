@@ -168,64 +168,67 @@ private async _callModelWithFile(opts: {
 }): Promise<string> {
   const { systemInstruction, userText, fileBuffer, fileMime, fileName, temp = 0.2, maxTokens = 512 } = opts;
 
-  const MAX_INLINE_BYTES = 20 * 1024 * 1024; // ~20MB conservative
+  const MAX_INLINE_BYTES = 20 * 1024 * 1024; // konservatif
   if (fileBuffer.length > MAX_INLINE_BYTES) {
     throw new Error('File terlalu besar untuk dikirim inline; gunakan File Upload API.');
   }
 
-  // convert to base64 (no data:<mime>; prefix)
+  // Convert to base64 (no "data:" prefix)
   const b64 = fileBuffer.toString('base64');
 
-  // Build multimodal contents. Adjust keys if your SDK expects different shape.
+  // Build contents in the JS SDK shape shown in official docs:
+  // [ { inlineData: { mimeType, data } }, { text: "..." } ]
   const contents: any[] = [
     {
-      // image part (common shape — adapt to your SDK)
-      type: 'image',
-      image: {
+      inlineData: {
         mimeType: fileMime,
-        filename: fileName ?? 'upload',
         data: b64,
+        filename: fileName ?? 'upload',
       },
     },
     {
-      // text part with instructions + user message
-      type: 'text',
-      text: `${systemInstruction}\n\nPesan pengguna (opsional): ${userText || '(tidak ada pesan teks)'}\n\nTugas: Gunakan FILE terlampir sebagai sumber utama. Pertama berikan ringkasan singkat dari file (1-2 kalimat). Lalu jawab pertanyaan/permintaan pengguna jika ada. Jika pengguna tidak memberi pesan, sarankan 2 pertanyaan tindak lanjut yang relevan. Jawab dalam bahasa Indonesia secara singkat dan jelas.`,
+      text: `${systemInstruction}\n\nPesan pengguna (opsional): ${userText || '(tidak ada pesan teks)'}\n\nTugas: Gunakan FILE terlampir sebagai sumber utama. Pertama berikan ringkasan singkat dari file (1-2 kalimat). Lalu jawab permintaan pengguna jika ada. Jika pengguna tidak memberi pesan, sarankan 2 pertanyaan tindak lanjut yang relevan. Jawab dalam Bahasa Indonesia, singkat dan jelas.`,
     },
   ];
 
-  const call = async () => {
-    // Wrap SDK call in a timeout as a safety (use AbortController if SDK supports).
-    const sdkCall = async () => {
-      // `any` cast to keep TypeScript happy if SDK types differ.
-      const resp: any = await (this.aiClient.models as any).generateContent({
-        model: this.modelName,
-        // Many SDKs accept `contents` array for multimodal; adapt if needed.
-        contents,
-        config: { temperature: temp, maxOutputTokens: maxTokens },
-      });
-      return resp;
-    };
+  // DEBUG — log structure but omit base64 content
+  try {
+    this.logger.debug(
+      'Prepared contents for generateContent (shape): ' +
+        JSON.stringify(contents, (k, v) => (k === 'data' ? '<BASE64_OMITTED>' : v))
+    );
+  } catch {
+    // ignore stringify errors
+  }
 
-    // Use _withRetries wrapper; extract text from response after success.
-    const resp = await this._withRetries(sdkCall, 3, 500);
-    const extracted = this._extractTextFromResp(resp);
-    return extracted ?? '';
+  const sdkCall = async () => {
+    // Use any cast to avoid type friction with differing SDK typings.
+    const resp: any = await (this.aiClient.models as any).generateContent({
+      model: this.modelName,
+      contents,
+      config: { temperature: temp, maxOutputTokens: maxTokens },
+    });
+    return resp;
   };
 
   try {
-    return await call();
+    const resp = await this._withRetries(sdkCall, 3, 500);
+    const extracted = this._extractTextFromResp(resp);
+    return extracted ?? '';
   } catch (e: any) {
-    this.logger.error('Gemini multimodal call failed: ' + (e?.message ?? e));
+    // Log full error message (stringified) for debugging — but DO NOT log base64.
+    this.logger.error('Gemini multimodal call failed: ' + (e?.message ?? JSON.stringify(e)));
     throw e;
   }
 }
+
+
 
 // --- REPLACEMENT: ask method (paste in place of your old ask) ---
 async ask(payload: AskPayload) {
   const { file, ...dto } = payload;
   const { isNew, count } = await this.isConversationNew(dto.conversation_id);
-
+  console.log("file uploaded", file);
   // create/save user message (store metadata only; don't store binary)
   const userMsg = this.messageRepo.create(dto);
   await this.messageRepo.save(userMsg);
