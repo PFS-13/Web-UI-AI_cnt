@@ -345,6 +345,7 @@ const ChatPage: React.FC = () => {
                 placeholder="Message ChatGPT"
                 disabled={isTyping}
                 showSendButton={false}
+                autoFocus={true} // Auto focus for new chat
               />
             </div>
           </>
@@ -386,6 +387,7 @@ const ChatPage: React.FC = () => {
                 placeholder="Message ChatGPT"
                 disabled={isTyping}
                 showSendButton={false}
+                autoFocus={true} // Auto focus for new chat
               />
             </div>
           </div>

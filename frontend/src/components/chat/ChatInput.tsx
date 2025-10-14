@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import styles from '../../pages/Dashboard/Dashboard.module.css';
 
 interface ChatInputProps {
@@ -19,6 +19,7 @@ interface ChatInputProps {
   placeholder?: string;
   disabled?: boolean;
   showSendButton?: boolean;
+  autoFocus?: boolean; // New prop for auto focus
   // File upload props
   imagePreviews: string[];
   selectedImageIndex: number | null;
@@ -64,7 +65,22 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onDragOver,
   onDragLeave,
   onDrop,
+  autoFocus = false, // Default to false
 }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto focus effect
+  useEffect(() => {
+    if (autoFocus && textareaRef.current) {
+      // Small delay to ensure component is fully rendered
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
+
   return (
     <form onSubmit={onSubmit} className={`${styles.inputForm} ${hasMessages ? styles.inputFormWithMessages : ''}`}>
       {/* Hidden file input */}
@@ -189,6 +205,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       
       <div className={styles.inputContainer}>
         <textarea
+          ref={textareaRef}
           value={inputValue}
           onChange={onInputChange}
           onKeyDown={onKeyDown}

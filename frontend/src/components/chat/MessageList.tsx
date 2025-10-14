@@ -1,5 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../pages/Dashboard/Dashboard.module.css';
+import ChainMessageControls from './ChainMessageControls';
+import TypingEffect from './TypingEffect';
+import MarkdownRenderer from './MarkdownRenderer';
+import { MarkdownProvider, useMarkdownContext } from './MarkdownRenderer/MarkdownContext';
+import { messageAPI } from '../../services/api/message.api';
 
 interface ChatMessage {
   id?: number;
@@ -9,120 +14,336 @@ interface ChatMessage {
   edited_from_message_id?: number;
 }
 
+interface ChainData {
+  [messageId: number]: {
+    currentIndex: number;
+    totalChains: number;
+  };
+}
+
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement>;
-  onMessageAction?: (messageId: number, action: string) => void;
   onChangePath?: (messageId: number, type: string, edited_from_message_id?: number) => void;
   OnEditMessage?: (messageId: number, content: string, is_edited?: boolean) => void;
 }
 
-const MessageList: React.FC<MessageListProps> = ({
+// Internal component that uses MarkdownContext
+const MessageListInternal: React.FC<MessageListProps> = ({
   messages,
   isLoading,
   messagesContainerRef,
-  onMessageAction,
   onChangePath,
   OnEditMessage
 }) => {
+  const { resetNumbering } = useMarkdownContext();
+  const [chainData, setChainData] = useState<ChainData>({});
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [typingMessageId, setTypingMessageId] = useState<number | null>(null);
+  const lastMessageCountRef = useRef<number>(0);
+  const [isNewMessage, setIsNewMessage] = useState<boolean>(false);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+
+  // Load chain data for messages that have chains
+  useEffect(() => {
+    const loadChainData = async () => {
+      console.log('Loading chain data for messages:', messages);
+      for (const message of messages) {
+        if (message.id) {
+          console.log(`Checking message ${message.id}:`, {
+            is_edited: message.is_edited,
+            edited_from_message_id: message.edited_from_message_id,
+            content: message.content.substring(0, 50) + '...'
+          });
+          
+          // Coba load chain data untuk semua messages (fallback approach)
+          try {
+            console.log(`Loading chain data for message ${message.id}`);
+            const response = await messageAPI.getChainedMessage(message.id);
+            console.log(`Chain response for message ${message.id}:`, response);
+            
+            // Pastikan response.chain ada dan merupakan array
+            console.log(`Chain validation for message ${message.id}:`, {
+              hasResponse: !!response,
+              hasChain: !!(response && response.chain),
+              isArray: !!(response && response.chain && Array.isArray(response.chain)),
+              chainLength: response && response.chain ? response.chain.length : 'N/A',
+              chainContent: response && response.chain ? response.chain : 'N/A'
+            });
+            
+            if (response && response.chain && Array.isArray(response.chain) && response.chain.length > 1) {
+              console.log(`Setting chain data for message ${message.id}:`, {
+                currentIndex: 1,
+                totalChains: response.chain.length
+              });
+              setChainData(prev => ({
+                ...prev,
+                [message.id!]: {
+                  currentIndex: 1, // Default to first chain
+                  totalChains: response.chain.length
+                }
+              }));
+            } else {
+              console.log(`No valid chain data for message ${message.id}:`, {
+                reason: !response ? 'No response' : 
+                        !response.chain ? 'No chain property' :
+                        !Array.isArray(response.chain) ? 'Chain is not array' :
+                        response.chain.length <= 1 ? `Chain length is ${response.chain.length} (need > 1)` : 'Unknown',
+                response: response
+              });
+            }
+          } catch (error) {
+            console.error(`Error loading chain data for message ${message.id}:`, error);
+          }
+          // Untuk message yang tidak memiliki chain, TIDAK set chainData sama sekali
+          // Ini akan membuat chainInfo = null dan totalChains = 1 (fallback)
+        }
+      }
+    };
+
+    loadChainData();
+  }, [messages]);
+
+  // Detect new AI messages for typing effect
+  useEffect(() => {
+    const currentMessageCount = messages.length;
+    const lastMessage = messages[messages.length - 1];
+    
+    // Only trigger typing effect if there's a new message and it's an AI message
+    // AND if lastMessageCountRef has been initialized (not 0 on first load)
+    if (currentMessageCount > lastMessageCountRef.current && 
+        lastMessageCountRef.current > 0 && // Pastikan bukan first load
+        lastMessage && 
+        !lastMessage.is_user && 
+        lastMessage.id) {
+      
+      // Reset state terlebih dahulu untuk memastikan clean start
+      setIsNewMessage(false);
+      setTypingMessageId(null);
+      
+      // Set state untuk message baru dengan delay minimal
+      setTimeout(() => {
+        setIsNewMessage(true);
+        setTypingMessageId(lastMessage.id!);
+      }, 0);
+      
+      lastMessageCountRef.current = currentMessageCount;
+    } else if (lastMessageCountRef.current === 0) {
+      // Initialize lastMessageCountRef pada first load tanpa trigger typing
+      lastMessageCountRef.current = currentMessageCount;
+    }
+  }, [messages]);
+
+  // Auto scroll during AI typing
+  useEffect(() => {
+    if (isTyping && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const scrollToBottom = () => {
+        container.scrollTop = container.scrollHeight;
+      };
+
+      // Scroll immediately when typing starts
+      scrollToBottom();
+
+      // Set up interval to scroll during typing
+      const scrollInterval = setInterval(scrollToBottom, 100);
+
+      return () => {
+        clearInterval(scrollInterval);
+      };
+    }
+  }, [isTyping, messagesContainerRef]);
+
+  // Auto scroll when new message is added
+  useEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0) {
+      const container = messagesContainerRef.current;
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 50);
+    }
+  }, [messages.length, messagesContainerRef]);
+
+  // Reset numbering for new conversations
+  useEffect(() => {
+    if (messages.length === 0) {
+      resetNumbering();
+    }
+  }, [messages.length, resetNumbering]);
+
+  const handleCopyMessage = async (messageId: number) => {
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      try {
+        await navigator.clipboard.writeText(message.content);
+        console.log('Message copied to clipboard:', message.content);
+      } catch (err) {
+        console.error('Failed to copy message:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = message.content;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          console.log('Message copied to clipboard (fallback):', message.content);
+        } catch (fallbackErr) {
+          console.error('Fallback copy failed:', fallbackErr);
+        }
+        document.body.removeChild(textArea);
+      }
+    }
+  };
+
+  const handleEditMessage = (messageId: number) => {
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      console.log('Edit message clicked:', { messageId, content: message.content, is_edited: message.is_edited });
+      setEditingMessageId(messageId);
+      setEditContent(message.content);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (editingMessageId && OnEditMessage && editContent.trim()) {
+      const message = messages.find(m => m.id === editingMessageId);
+      if (message) {
+        OnEditMessage(editingMessageId, editContent.trim(), message.is_edited);
+      }
+    }
+    setEditingMessageId(null);
+    setEditContent('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  const handleTypingComplete = () => {
+    setTypingMessageId(null);
+    setIsNewMessage(false);
+    setIsTyping(false);
+  };
+
+  const handleTypingStart = () => {
+    setIsTyping(true);
+  };
+
+  const handleNavigateLeft = (messageId: number) => {
+    const currentChain = chainData[messageId];
+    if (currentChain && currentChain.currentIndex > 1) {
+      setChainData(prev => ({
+        ...prev,
+        [messageId]: {
+          ...currentChain,
+          currentIndex: currentChain.currentIndex - 1
+        }
+      }));
+      onChangePath?.(messageId, 'prev');
+    }
+  };
+
+  const handleNavigateRight = (messageId: number) => {
+    const currentChain = chainData[messageId];
+    if (currentChain && currentChain.currentIndex < currentChain.totalChains) {
+      setChainData(prev => ({
+        ...prev,
+        [messageId]: {
+          ...currentChain,
+          currentIndex: currentChain.currentIndex + 1
+        }
+      }));
+      onChangePath?.(messageId, 'next');
+    }
+  };
   return (
   <div ref={messagesContainerRef} className={styles.messagesContainer}>
     <div className={styles.messagesWrapper}>
-      {messages.map((message) => (
-        <div 
-          key={message.id} 
-          className={`${styles.message} ${message.is_user ? styles.userMessage : styles.aiMessage}`}
-        >
-          <div className={styles.messageContent}>
-             {message.content}
+      {messages.map((message) => {
+        const chainInfo = message.id ? chainData[message.id] : null;
+        
+        return (
+          <div 
+            key={message.id} 
+            className={`${styles.message} ${styles.messageContainer} ${message.is_user ? styles.userMessage : styles.aiMessage}`}
+          >
+            <div className={styles.messageContent}>
+              {editingMessageId === message.id ? (
+                // Edit Form - tampilkan form edit inline
+                <div className={styles.editForm}>
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className={styles.editTextarea}
+                    placeholder="Edit your message..."
+                    autoFocus
+                    rows={3}
+                  />
+                  <div className={styles.editButtons}>
+                    <button 
+                      className={styles.cancelEditButton}
+                      onClick={handleCancelEdit}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className={styles.saveEditButton}
+                      onClick={handleSaveEdit}
+                      disabled={!editContent.trim() || editContent === message.content}
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Normal Message Bubble
+                <>
+                  <div className={styles.messageBubble}>
+                    {message.is_user ? (
+                      <MarkdownRenderer text={message.content} messageId={message.id} />
+                    ) : (
+                      <TypingEffect
+                        text={message.content}
+                        speed={4}
+                        isNewMessage={isNewMessage && typingMessageId === message.id}
+                        onComplete={handleTypingComplete}
+                        onStart={handleTypingStart}
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Chain Message Controls - untuk semua messages */}
+                  {message.id && (
+                    <ChainMessageControls
+                      messageId={message.id}
+                      isUser={message.is_user}
+                      currentChainIndex={chainInfo?.currentIndex || 1}
+                      totalChains={chainInfo?.totalChains || 1}
+                      onCopy={handleCopyMessage}
+                      onEdit={message.is_user ? handleEditMessage : undefined}
+                      onNavigateLeft={handleNavigateLeft}
+                      onNavigateRight={handleNavigateRight}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
-          
-          {/* Edit indicators */}
-            {message.is_edited && (
-              <span 
-                className={styles.editedLabel}
-                onClick={() => onChangePath?.(message.id!, 'next')}
-              >
-                &gt; {/* simbol '>' */}
-              </span>
-            )}
-            {message.edited_from_message_id && (
-              <span 
-                className={styles.editedLabel}
-                onClick={() => onChangePath?.(message.id!, 'prev', message.edited_from_message_id)}
-              >
-                &lt; {/* simbol '<' */}
-              </span>
-            )}
-
-          {/* User Message Actions */}
-          {message.is_user && (
-            <div className={styles.messageActions}>
-              <button 
-                className={styles.actionButton}
-                onClick={() => OnEditMessage?.(message.id!, "Hewan apa yang berkaki 6?", message.is_edited)}
-                title="Edit"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.09H5v-1.92l8.06-8.06 1.92 1.92L5.92 19.34zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* AI Message Actions */}
-          {!message.is_user && (
-            <div className={styles.messageActions}>
-              <button 
-                className={styles.actionButton}
-                onClick={() => onMessageAction?.(message.id!, 'copy')}
-                title="Copy"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M7 14H5v5h5v-2H7v-3zm-2-9h3V2H5v5h2V5zm11.5 6c-1.24 0-2.25-1.01-2.25-2.25S15.26 8.5 16.5 8.5s2.25 1.01 2.25 2.25S17.74 13.5 16.5 13.5zM7 16h3v2H7v-2zm0-8h3v2H7V8z"/>
-                </svg>
-              </button>
-              <button 
-                className={styles.actionButton}
-                onClick={() => onMessageAction?.(message.id!, 'edit')}
-                title="Edit"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M15 3H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 16V5h9v14H6zm8-12h-5v2h5V7zm0 4h-5v2h5v-2zm0 4h-5v2h5v-2z"/>
-                </svg>
-              </button>
-              <button 
-                className={styles.actionButton}
-                onClick={() => onMessageAction?.(message.id!, 'like')}
-                title="Like"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-              </button>
-              <button 
-                className={styles.actionButton}
-                onClick={() => onMessageAction?.(message.id!, 'regenerate')}
-                title="Regenerate"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                  </svg>
-              </button>
-              <button 
-                className={styles.actionButton}
-                onClick={() => onMessageAction?.(message.id!, 'more')}
-                title="More"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
       
       {/* Loading indicator */}
       {isLoading && (
@@ -136,10 +357,20 @@ const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
       )}
+
     </div>
   </div>
 );
 
+};
+
+// Main component with MarkdownProvider
+const MessageList: React.FC<MessageListProps> = (props) => {
+  return (
+    <MarkdownProvider>
+      <MessageListInternal {...props} />
+    </MarkdownProvider>
+  );
 };
 
 export default MessageList;

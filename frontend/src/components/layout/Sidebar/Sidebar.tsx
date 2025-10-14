@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-import { authAPI, conversationAPI } from '../../../services';
+import { authAPI } from '../../../services';
 import SearchPopup from './SearchPopup';
 import type { Conversation } from '../../../types/chat.types';
 

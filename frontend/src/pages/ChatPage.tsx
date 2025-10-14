@@ -248,6 +248,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          autoFocus={mode === 'new'} // Auto focus for new chat
         />
         </main>
       </ChatLayout>

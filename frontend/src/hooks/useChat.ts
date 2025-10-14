@@ -50,7 +50,7 @@ interface UseChatReturn {
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
-  handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
+  handleChangePath: (messageId: number, type: string) => void;
   handleEditMessage: (messageId: number, content: string, is_edited?: boolean) => void;
   handleSelectConversation: (conversation: any) => void;
   handleNewChat: () => void;
@@ -190,94 +190,139 @@ const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) 
 
 
 
-const handleChangePath = async (message_id: number,  type: string, edited_from_message_id?: number) => {
-  console
-  let res = null;
-  if (type === 'next') {
-    res = await messageAPI.getEditedMessageId(message_id);
-  } else {
-    res = {edited_id: edited_from_message_id || -1};
-  }
-  if (res === null || res.edited_id === -1) return;
-  const edited_id = res.edited_id;
-  console.log("the message id", message_id);
-  console.log("the edited id", edited_id);
+const handleChangePath = async (message_id: number, type: string) => {
+  try {
+    // Get chain data untuk message ini
+    const chainResponse = await messageAPI.getChainedMessage(message_id);
+    if (!chainResponse || !chainResponse.chain || chainResponse.chain.length <= 1) {
+      console.log("No chain data available for message:", message_id);
+      return;
+    }
 
-  const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
-  console.log("the index", { outerIndex, innerIndex });
-  console.log("the all message id", allMessagesId);
-  if (outerIndex === -1 || innerIndex === -1) return;
-  const currentPath = allMessagesId[outerIndex]
-  if (type === 'next' && innerIndex + 1 < allMessagesId[outerIndex].length) {
-  const index = path.indexOf(message_id);
-  if (index !== -1) {
-    path.splice(index);
-  }
-  setPath(prev => [...prev, ...currentPath]);
-}else {
-  const index = path.indexOf(message_id);
-  if (index !== -1) {
-    path.splice(index);
-  }
-  const filtered = currentPath.filter(num => !path.includes(num));
-  setPath(prev => [...prev, ...filtered]);
-}
+    const chain = chainResponse.chain;
+    console.log("Chain data:", chain);
+    console.log("Navigation type:", type);
 
-  console.log("change-path",path)
-  console.log("all-id",allMessagesId)
+    // Find current message index in chain
+    const currentIndex = chain.indexOf(message_id);
+    if (currentIndex === -1) {
+      console.log("Message not found in chain");
+      return;
+    }
 
+    let targetMessageId: number;
+    
+    if (type === 'next') {
+      // Navigate to next version in chain
+      if (currentIndex + 1 >= chain.length) {
+        console.log("Already at latest version");
+        return;
+      }
+      targetMessageId = chain[currentIndex + 1];
+    } else {
+      // Navigate to previous version in chain
+      if (currentIndex - 1 < 0) {
+        console.log("Already at original version");
+        return;
+      }
+      targetMessageId = chain[currentIndex - 1];
+    }
+
+    console.log("Target message ID:", targetMessageId);
+
+    // Find target message in allMessagesId
+    const { outerIndex, innerIndex } = findPathIndex(allMessagesId, targetMessageId);
+    if (outerIndex === -1 || innerIndex === -1) {
+      console.log("Target message not found in allMessagesId");
+      return;
+    }
+
+    // Update path to show target message
+    const currentPath = allMessagesId[outerIndex];
+    const index = path.indexOf(message_id);
+    if (index !== -1) {
+      path.splice(index);
+    }
+    
+    // Add the target path
+    const filtered = currentPath.filter(num => !path.includes(num));
+    setPath(prev => [...prev, ...filtered]);
+
+    console.log("Updated path:", path);
+    console.log("All message IDs:", allMessagesId);
+
+  } catch (error) {
+    console.error("Error in handleChangePath:", error);
+  }
 };
 
 const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
-  let value_before = null;
-  let edited_from = messageId
-  if (is_edited){
-    const chain = await messageAPI.getChainedMessage(messageId);
-    edited_from = Array.isArray(chain) && chain.length > 0 ? chain.at(-1) // atau chain[chain.length - 1]
-    : messageId;    
-  }
+  // Inline form edit sudah dihandle di MessageList component
+  // Fungsi ini hanya untuk memproses edit yang sudah dikonfirmasi
+  try {
+    let value_before = null;
+    let edited_from = messageId;
+    
+    if (is_edited) {
+      const chain = await messageAPI.getChainedMessage(messageId);
+      edited_from = chain && chain.chain && Array.isArray(chain.chain) && chain.chain.length > 0 
+        ? chain.chain[chain.chain.length - 1] 
+        : messageId;    
+    }
+    
     const index_value_before = path.indexOf(messageId);
     value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
 
+    // Hapus message dari path dan chatMessages
+    const index = path.indexOf(messageId);
+    if (index !== -1) {
+      path.splice(index);
+    }
 
-  
-  const index = path.indexOf(messageId);
-  if (index !== -1) {
-    path.splice(index);
-  }
+    const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
+    if (index_chat !== -1) {
+      chatMessages.splice(index_chat);
+    }
 
-  const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
-  if (index_chat !== -1) {
-    chatMessages.splice(index_chat);
-  }
+    if (conversationId === undefined) {
+      console.error("Cannot edit message: conversation isnt found");
+      return;
+    }
 
-  if (conversationId === undefined) {
-    console.error("Cannot edit message: conversation isnt found");
-    return;
-  }
+    // Edit message di backend
     await messageAPI.editMessage(edited_from);
+    
+    // Buat userMessage baru dengan konten yang diedit
     const userMessage: ChatMessage = {
-        content: content,
-        is_user: true,
-        edited_from_message_id: edited_from
-      };
+      content: content,
+      is_user: true,
+      edited_from_message_id: edited_from
+    };
+    
     setChatMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    
+    // Kirim message yang diedit ke AI
     const response = await messageAPI.sendMessage({ 
-          content: userMessage.content,
-          conversation_id: conversationId,
-          is_user: true,
-          is_attach_file: fileUpload.uploadedImages.length > 0,
-          parent_message_id: value_before,
-          edited_from_message_id: edited_from
-        });
+      content: userMessage.content,
+      conversation_id: conversationId,
+      is_user: true,
+      is_attach_file: fileUpload.uploadedImages.length > 0,
+      parent_message_id: value_before,
+      edited_from_message_id: edited_from
+    });
 
-        setChatMessages(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (lastIndex >= 0) {updated[lastIndex] = {
-              ...updated[lastIndex],
-              id: response.reply.message_id_client,};}return updated;});
+    setChatMessages(prev => {
+      const updated = [...prev];
+      const lastIndex = updated.length - 1;
+      if (lastIndex >= 0) {
+        updated[lastIndex] = {
+          ...updated[lastIndex],
+          id: response.reply.message_id_client,
+        };
+      }
+      return updated;
+    });
         setTimeout(() => {
           const aiMessage: ChatMessage = { 
             content: response.reply.message,
@@ -289,6 +334,13 @@ const handleEditMessage = async (messageId: number, content: string, is_edited?:
           setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
           setIsLoading(false);
         }, 1000);
+        
+  } catch (error) {
+    console.error("Error editing message:", error);
+    setIsLoading(false);
+    // Restore original message if edit fails
+    setChatMessages(prev => [...prev, { content, is_user: true, id: messageId }]);
+  }
 }
 
 
