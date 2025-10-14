@@ -317,7 +317,6 @@ const handleEditMessage = async (messageId: number, content: string, is_edited?:
     }
   };
 
-  // contoh upload multiple files (1 request per file)
 
 async function uploadFiles(files: File[], message_id: number) {
   for (const file of files) {
@@ -372,7 +371,7 @@ const handleDeleteConversation = async (conversationId: string) => {
             is_attach_file: fileUpload.uploadedImages.length > 0,
             parent_message_id: null,
             edited_from_message_id: null
-          });
+          }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
 
           setChatMessages(prev => {
           const updated = [...prev];
@@ -405,7 +404,7 @@ const handleDeleteConversation = async (conversationId: string) => {
           is_attach_file: fileUpload.uploadedImages.length > 0,
           parent_message_id: lastChat,
           edited_from_message_id: undefined
-        });
+        }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
 
         setChatMessages(prev => {
           const updated = [...prev];

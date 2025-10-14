@@ -28,12 +28,10 @@ export class createMessageDto {
 
     @ApiProperty({ description: 'True if user the one who send the message. False if the message is AI Response', example : true })
     @IsBoolean()
-    @IsNotEmpty() 
     is_user: boolean; 
   
     @ApiProperty({ description: 'True if the message also attach file. False if not', example : false })
     @IsBoolean()
-    @IsNotEmpty() 
     is_attach_file: boolean; 
 
     @ApiProperty({ description: 'Message was edited from other meessage', example : 'conve123ID' })
@@ -46,6 +44,9 @@ export class createMessageDto {
     @IsOptional() 
     parent_message_id?: number; 
   }
+
+  export type AskPayload = createMessageDto & { file?: Express.Multer.File };
+
 
   export class editMessageDto {
 

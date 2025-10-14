@@ -2,7 +2,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { createMessageDto } from '../dtos/message.dto';
+import { AskPayload, createMessageDto } from '../dtos/message.dto';
 import { Message } from '../entity/message.entity';
 import { ConversationService } from './conversation.service';
 // Gemini SDK
@@ -13,7 +13,7 @@ export class MessageService {
   private readonly logger = new Logger(MessageService.name);
   private readonly modelName = 'gemini-2.5-flash';
   private aiClient: GoogleGenAI;
-
+  
   constructor(
     @InjectRepository(Message)
 
@@ -28,7 +28,7 @@ export class MessageService {
     }
     this.aiClient = new GoogleGenAI({ apiKey });
   }
-
+  
   // --- helper retry wrapper (simple exponential backoff)
   private async _withRetries<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 300) : Promise<T> {
     let lastErr: any = null;
@@ -134,116 +134,264 @@ async isConversationNew(conversation_id: UUID): Promise<{ isNew: boolean, count:
   const count = await this.messageRepo.count({ where: { conversation_id } });
   return { isNew: count === 0 , count};
 }
-  // Ganti method ask di MessageService
-  async ask(dto: createMessageDto) {
-    const {isNew, count} = await this.isConversationNew(dto.conversation_id);
-    const userMsg = this.messageRepo.create(dto);
-    await this.messageRepo.save(userMsg);
-    console.log('Is conversation new? ' + isNew + ' (message count=' + count + ')');
-    if (isNew) {
-      try {
-        await this.extractContextAndConsoleLog(userMsg);
-      } catch (e) {
-        this.logger.error('Failed during context extraction/logging: ' + (e?.message ?? e));
-      }
-    } 
 
-    this.conversationService.updatedTimestamp(dto.conversation_id).catch(e => {
-      this.logger.error('Failed to update conversation timestamp: ' + (e?.message ?? e));
-    });
+// --- NEW helpers to add inside MessageService class ---
 
-    // ambil history (recent) - ambil fields yang dibutuhkan saja
-    const recent = await this.messageRepo.find({
-      where: { conversation_id: dto.conversation_id },
-      order: { created_at: 'DESC' },
-      take: 100,
-      select: ['id', 'content', 'is_user', 'created_at'],
-    });
-    const historyEntitiesAll = recent.reverse();
+/**
+ * Sanitize and truncate text to safely put into prompt.
+ */
+private _sanitizeForPrompt(s: string | undefined, maxLen = 1200): string {
+  if (!s) return '';
+  let safe = String(s);
+  // remove control chars, collapse whitespace
+  safe = safe.replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // break code fences/triple quotes to avoid prompt injection boundaries
+  safe = safe.replace(/```/g, '` ` `').replace(/"""/g, '"\'\'');
+  if (safe.length > maxLen) safe = safe.slice(0, maxLen) + '...';
+  return safe;
+}
 
-    const historyEntities = historyEntitiesAll.filter(h => {
-      if (!h.content) return false; 
-      const low = h.content.trim().toLowerCase();
-      if (low.startsWith('(fallback') || low.includes('(fallback gemini)')) return false;
-      return true;
-    });
+/**
+ * Send a multimodal request that includes an inline base64 file + text prompt.
+ * Returns assistant text extracted from response.
+ *
+ * NOTE: adjust the payload shape inside generateContent(...) to match your SDK version.
+ */
+private async _callModelWithFile(opts: {
+  systemInstruction: string;
+  userText: string;
+  fileBuffer: Buffer;
+  fileMime: string;
+  fileName?: string;
+  temp?: number;
+  maxTokens?: number;
+}): Promise<string> {
+  const { systemInstruction, userText, fileBuffer, fileMime, fileName, temp = 0.2, maxTokens = 512 } = opts;
 
-    const lastContext = historyEntities.slice(-10).map(h => ({
-      role: h.is_user ? 'user' : 'assistant',
-      text: h.content,
-      created_at: h.created_at,
-    }));
+  const MAX_INLINE_BYTES = 20 * 1024 * 1024; // ~20MB conservative
+  if (fileBuffer.length > MAX_INLINE_BYTES) {
+    throw new Error('File terlalu besar untuk dikirim inline; gunakan File Upload API.');
+  }
 
-    const systemInstruction = `Kamu adalah asisten yang membantu. Jawab singkat dan jelas dalam bahasa Indonesia kecuali diminta lain.
-Penting: Fokus pada PESAN BARU di bagian akhir. Jangan menyalin jawaban assistant sebelumnya. Gunakan pesan sebelumnya hanya sebagai konteks.`;
+  // convert to base64 (no data:<mime>; prefix)
+  const b64 = fileBuffer.toString('base64');
 
-    const contextParts = lastContext
-      .map(item => `${item.role === 'user' ? 'User' : 'Assistant'}: ${item.text}`)
-      .join('\n');
+  // Build multimodal contents. Adjust keys if your SDK expects different shape.
+  const contents: any[] = [
+    {
+      // image part (common shape — adapt to your SDK)
+      type: 'image',
+      image: {
+        mimeType: fileMime,
+        filename: fileName ?? 'upload',
+        data: b64,
+      },
+    },
+    {
+      // text part with instructions + user message
+      type: 'text',
+      text: `${systemInstruction}\n\nPesan pengguna (opsional): ${userText || '(tidak ada pesan teks)'}\n\nTugas: Gunakan FILE terlampir sebagai sumber utama. Pertama berikan ringkasan singkat dari file (1-2 kalimat). Lalu jawab pertanyaan/permintaan pengguna jika ada. Jika pengguna tidak memberi pesan, sarankan 2 pertanyaan tindak lanjut yang relevan. Jawab dalam bahasa Indonesia secara singkat dan jelas.`,
+    },
+  ];
 
-    const promptBase = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${dto.content}\n\nAssistant:`;
-
-    this.logger.debug(`Prompt length=${promptBase.length} for conversation=${dto.conversation_id}`);
-
-    const callModel = async (prompt: string, temp = 0.25) => {
-      return await this._callModelRaw(prompt, temp, 512);
+  const call = async () => {
+    // Wrap SDK call in a timeout as a safety (use AbortController if SDK supports).
+    const sdkCall = async () => {
+      // `any` cast to keep TypeScript happy if SDK types differ.
+      const resp: any = await (this.aiClient.models as any).generateContent({
+        model: this.modelName,
+        // Many SDKs accept `contents` array for multimodal; adapt if needed.
+        contents,
+        config: { temperature: temp, maxOutputTokens: maxTokens },
+      });
+      return resp;
     };
 
-    let assistantText = '';
+    // Use _withRetries wrapper; extract text from response after success.
+    const resp = await this._withRetries(sdkCall, 3, 500);
+    const extracted = this._extractTextFromResp(resp);
+    return extracted ?? '';
+  };
+
+  try {
+    return await call();
+  } catch (e: any) {
+    this.logger.error('Gemini multimodal call failed: ' + (e?.message ?? e));
+    throw e;
+  }
+}
+
+// --- REPLACEMENT: ask method (paste in place of your old ask) ---
+async ask(payload: AskPayload) {
+  const { file, ...dto } = payload;
+  const { isNew, count } = await this.isConversationNew(dto.conversation_id);
+
+  // create/save user message (store metadata only; don't store binary)
+  const userMsg = this.messageRepo.create(dto);
+  await this.messageRepo.save(userMsg);
+
+  this.logger.debug('Is conversation new? ' + isNew + ' (message count=' + count + ')');
+
+  if (isNew) {
     try {
-      assistantText = await callModel(promptBase, 0.2);
+      // attempt to extract title/context (your existing method)
+      await this.extractContextAndConsoleLog(userMsg);
+    } catch (e: any) {
+      this.logger.error('Failed during context extraction/logging: ' + (e?.message ?? e));
+    }
+  }
+
+  this.conversationService.updatedTimestamp(dto.conversation_id).catch((e: any) => {
+    this.logger.error('Failed to update conversation timestamp: ' + (e?.message ?? e));
+  });
+
+  // ambil history (recent) - ambil fields yang dibutuhkan saja
+  const recent = await this.messageRepo.find({
+    where: { conversation_id: dto.conversation_id },
+    order: { created_at: 'DESC' },
+    take: 100,
+    select: ['id', 'content', 'is_user', 'created_at'],
+  });
+  const historyEntitiesAll = recent.reverse();
+
+  const historyEntities = historyEntitiesAll.filter(h => {
+    if (!h.content) return false;
+    const low = h.content.trim().toLowerCase();
+    if (low.startsWith('(fallback') || low.includes('(fallback gemini)')) return false;
+    return true;
+  });
+
+  const lastContext = historyEntities.slice(-10).map(h => ({
+    role: h.is_user ? 'user' : 'assistant',
+    text: h.content,
+    created_at: h.created_at,
+  }));
+
+  const systemInstruction = `Kamu adalah asisten yang membantu. Jawab singkat dan jelas dalam bahasa Indonesia kecuali diminta lain. Jika ada file terlampir, gunakan file itu sebagai sumber utama.`;
+
+  const contextParts = lastContext
+    .map(item => `${item.role === 'user' ? 'User' : 'Assistant'}: ${item.text}`)
+    .join('\n');
+
+  // sanitize user text (may be undefined/empty)
+  const safeUserText = this._sanitizeForPrompt((dto as any).content);
+
+  // Build prompt base for text-only flow (used when no file is present)
+  const promptBase = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${safeUserText}\n\nAssistant:`;
+
+  this.logger.debug(`Prompt length=${promptBase.length} for conversation=${dto.conversation_id}`);
+
+  // function wrapper to call text-only model
+  const callModelTextOnly = async (prompt: string, temp = 0.25) => {
+    return await this._callModelRaw(prompt, temp, 512);
+  };
+
+  let assistantText = '';
+
+  // === FLOW: file present => multimodal call; otherwise text-only flow ===
+  if (file && file.buffer) {
+    try {
+      this.logger.debug(`Sending inline file to model (mime=${file.mimetype}, size=${file.size})`);
+      assistantText = await this._callModelWithFile({
+        systemInstruction,
+        userText: safeUserText,
+        fileBuffer: file.buffer,
+        fileMime: file.mimetype,
+        fileName: file.originalname,
+        temp: 0.2,
+        maxTokens: 512,
+      });
+
+      if (!assistantText || assistantText.trim().length === 0) {
+        this.logger.warn('Empty response from Gemini (file flow), retrying with higher temp');
+        assistantText = await this._callModelWithFile({
+          systemInstruction,
+          userText: safeUserText,
+          fileBuffer: file.buffer,
+          fileMime: file.mimetype,
+          fileName: file.originalname,
+          temp: 0.6,
+          maxTokens: 512,
+        });
+      }
+    } catch (e: any) {
+      this.logger.error('Model (file) failed to produce a reply: ' + (e?.message ?? e));
+      assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban dari file. Coba ulangi atau kirim file yang lebih kecil.)';
+    }
+  } else {
+    // text-only existing flow
+    try {
+      assistantText = await callModelTextOnly(promptBase, 0.2);
       if (!assistantText || assistantText.trim().length === 0) {
         this.logger.warn('Empty response from Gemini on first try, retrying with higher temp');
-        assistantText = await callModel(promptBase, 0.6);
+        assistantText = await callModelTextOnly(promptBase, 0.6);
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error('Model failed to produce a reply: ' + (e?.message ?? e));
       assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
     }
+  }
 
-    const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_user);
-    if (lastAssistant && lastAssistant.content) {
-      const sim = this._similarityJaccard(lastAssistant.content, assistantText);
-      this.logger.debug(`Similarity with last assistant reply = ${sim}`);
-      const SIMILARITY_THRESHOLD = 0.75;
-      if (sim >= SIMILARITY_THRESHOLD) {
-        this.logger.log('Answer too similar to previous assistant reply — regenerating with stronger instruction');
-        const promptRetry = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${dto.content}\n\nAssistant: Berikan jawaban yang berbeda dari respons assistant sebelumnya. Tambahkan contoh atau langkah konkret. Singkat.`;
-        try {
-          const retryText = await callModel(promptRetry, 0.7);
-          if (retryText && retryText.trim().length > 0) {
-            const simRetry = this._similarityJaccard(lastAssistant.content, retryText);
-            this.logger.debug(`Similarity after retry = ${simRetry}`);
-            if (simRetry < sim) assistantText = retryText;
-          }
-        } catch (e) {
-          this.logger.warn('Retry generation failed: ' + (e?.message ?? e));
+  // similarity check with last assistant reply (same as before)
+  const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_user);
+  if (lastAssistant && lastAssistant.content) {
+    const sim = this._similarityJaccard(lastAssistant.content, assistantText);
+    this.logger.debug(`Similarity with last assistant reply = ${sim}`);
+    const SIMILARITY_THRESHOLD = 0.75;
+    if (sim >= SIMILARITY_THRESHOLD) {
+      this.logger.log('Answer too similar to previous assistant reply — regenerating with stronger instruction');
+      const promptRetry = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${safeUserText}\n\nAssistant: Berikan jawaban yang berbeda dari respons assistant sebelumnya. Tambahkan contoh atau langkah konkret. Singkat.`;
+      try {
+        let retryText = '';
+        if (file && file.buffer) {
+          retryText = await this._callModelWithFile({
+            systemInstruction,
+            userText: safeUserText,
+            fileBuffer: file.buffer,
+            fileMime: file.mimetype,
+            fileName: file.originalname,
+            temp: 0.7,
+            maxTokens: 512,
+          });
+        } else {
+          retryText = await callModelTextOnly(promptRetry, 0.7);
         }
+
+        if (retryText && retryText.trim().length > 0) {
+          const simRetry = this._similarityJaccard(lastAssistant.content, retryText);
+          this.logger.debug(`Similarity after retry = ${simRetry}`);
+          if (simRetry < sim) assistantText = retryText;
+        }
+      } catch (e: any) {
+        this.logger.warn('Retry generation failed: ' + (e?.message ?? e));
       }
     }
-
-    if (!assistantText || assistantText.trim().length === 0) {
-      assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
-    }
-
-    const assistantMsg = this.messageRepo.create({
-      conversation_id: dto.conversation_id,
-      content: assistantText,
-      is_user: false,
-      is_attach_file: false,
-      parent_message_id: userMsg.id
-    });
-    await this.messageRepo.save(assistantMsg);
-
-    return {
-      reply: { 
-        message_id_server: assistantMsg.id,
-        message: assistantText,
-        message_id_client: userMsg.id
-       
-      },
-    };
   }
+
+  if (!assistantText || assistantText.trim().length === 0) {
+    assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
+  }
+
+  // Save assistant message; mark is_attach_file true jika ada file
+  const assistantMsg = this.messageRepo.create({
+    conversation_id: dto.conversation_id,
+    content: assistantText,
+    is_user: false,
+    is_attach_file: !!file,
+    parent_message_id: userMsg.id,
+  });
+  await this.messageRepo.save(assistantMsg);
+
+  return {
+    reply: {
+      message_id_server: assistantMsg.id,
+      message: assistantText,
+      message_id_client: userMsg.id,
+    },
+  };
+}
+
+
 
   private _similarityJaccard(a: string, b: string): number {
     if (!a || !b) return 0;
