@@ -1,5 +1,5 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, Get, Req,Res,Patch,UseGuards, Query, HttpCode, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req,Res,Patch,UseGuards, Query, HttpCode, Param, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { AuthDto, VerifyOtpDto} from '../dtos/auth.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -98,16 +98,47 @@ export class AuthController {
     @Body() auth_dto: AuthDto,
     @Res({ passthrough: true }) res: Response
   ) {
-    const token = await this.authService.login(auth_dto);
+  const { access_token, refresh_token } = await this.authService.login(auth_dto);
     // TODO: change secure to true in production
-    res.cookie('Authentication', token.accessToken, {
+    res.cookie('Authentication', access_token, {
       httpOnly: true,
       secure: false, 
       sameSite: 'lax',
       maxAge: 120 * 60 * 1000,
     });
+
+    res.cookie('Refresh', refresh_token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, 
+  });
     return { message: 'Logged in' };
   }
+
+  @Post('v1/refresh')
+async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  const refreshToken = req.cookies['Refresh'];
+  if (!refreshToken) throw new UnauthorizedException('No refresh token');
+
+  const { accessToken, newRefreshToken } = await this.authService.refresh(refreshToken);
+
+  res.cookie('Authentication', accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000, 
+  });
+  res.cookie('Refresh', newRefreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return { message: 'Token refreshed' };
+}
+
 
   // Melakukan verifikasi OTP
   @Patch('v1/verify-otp')
@@ -124,10 +155,7 @@ export class AuthController {
       maxAge: 120 * 60 * 1000,
     });
     } 
-    
     return { user_id: result.user_id };
-    
-
   }
   
   // Pengiriman kembali email
@@ -166,6 +194,7 @@ export class AuthController {
 @Post('v1/logout')
 logout(@Res({ passthrough: true }) res: Response) {
   res.clearCookie('Authentication');
+  res.clearCookie('Refresh');
   return { message: 'Logged out' };
 }
   

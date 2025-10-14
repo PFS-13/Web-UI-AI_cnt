@@ -9,8 +9,10 @@ import type {
 import type { User } from '../../types/auth.types';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-
 class AuthAPI {
+  private isRefreshing = false;
+  private refreshPromise: Promise<Response> | null = null;
+
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
@@ -22,27 +24,45 @@ class AuthAPI {
       ...options,
     };
 
-    const response = await fetch(url, config);
+    let response = await fetch(url, config);
 
-    // handle 204 (No Content)
-    if (response.status === 204) return null as any;
+    if (response.status === 401) {
+      // Kalau refresh sedang berlangsung → tunggu dulu
+      if (this.isRefreshing && this.refreshPromise) {
+        await this.refreshPromise;
+        response = await fetch(url, config);
+      } else {
+        this.isRefreshing = true;
+        this.refreshPromise = fetch(`${API_BASE_URL}/auth/v1/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        const refreshResponse = await this.refreshPromise;
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+
+        if (refreshResponse.ok) {
+          // refresh berhasil → ulang request asli
+          response = await fetch(url, config);
+        } else {
+          // refresh gagal → redirect sekali saja
+          if (window.location.pathname !== '/login') {
+            console.warn("Refresh token expired. Redirecting to login...");
+            window.location.replace('/login');
+          }
+          throw new Error('Refresh token expired');
+        }
+      }
+    }
 
     const text = await response.text();
-    let data: any = null;
+    const data = text ? JSON.parse(text) : null;
 
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = { message: text };
-    }
-
-    if (!response.ok) {
-      // balikin error dalam bentuk json
-      throw data;
-    }
-
-    return data as T;
+    if (!response.ok) throw data;
+    return data;
   }
+
   async getMe(): Promise<User> {
     return this.request('/auth/v1/me', { method: 'GET' });
   }
