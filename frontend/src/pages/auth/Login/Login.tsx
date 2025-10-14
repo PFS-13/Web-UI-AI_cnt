@@ -22,7 +22,7 @@ const Login: React.FC = () => {
       try {
         const me = await authAPI.getMe();
         if (me) {
-          navigate('/dashboard', { replace: true }); // langsung redirect tanpa flicker
+          navigate('/', { replace: true }); // langsung redirect tanpa flicker
         } else {
           setIsCheckingAuth(false); // belum login, render halaman login
         }

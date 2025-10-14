@@ -33,7 +33,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <ul className={styles.linkList}>
                 <li><a href="/chat" className={styles.link}>Chat</a></li>
                 <li><a href="/conversations" className={styles.link}>History</a></li>
-                <li><a href="/dashboard" className={styles.link}>Dashboard</a></li>
+                <li><a href="/" className={styles.link}>Dashboard</a></li>
               </ul>
             </div>
 

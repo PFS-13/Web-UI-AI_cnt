@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const conversationMenuRef = useRef<HTMLDivElement>(null);
 
   const handleNewChat = () => {
-    navigate('/dashboard');
+    navigate('/');
   };
 
   const handleSearchClick = () => {

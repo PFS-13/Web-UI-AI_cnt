@@ -40,7 +40,7 @@ const App: React.FC = () => {
           <Route path="/conversations" element={<ConversationHistory />} />
           
           {/* Legacy dashboard route - redirect to root */}
-          <Route path="/dashboard" element={<RootPage />} />
+          {/* <Route path="/dashboard" element={<RootPage />} /> */}
         </Routes>
       </div>
     </Router>

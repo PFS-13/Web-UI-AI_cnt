@@ -15,7 +15,7 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
+    { name: 'Dashboard', href: '/', icon: '🏠' },
     { name: 'Chat', href: '/chat', icon: '💬' },
     { name: 'History', href: '/conversations', icon: '📚' },
   ];
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
     <header className={headerClasses}>
       <div className={styles.container}>
         <div className={styles.logo}>
-          <Link to="/dashboard" className={styles.logoLink}>
+          <Link to="/" className={styles.logoLink}>
             <span className={styles.logoIcon}>🤖</span>
             <span className={styles.logoText}>Web-UI-AI</span>
           </Link>
