@@ -156,7 +156,7 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     const payload_access_token = { email: user.email, sub: user.id }; 
     const access_token = this.jwtService.sign(payload_access_token, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '5s', // ✅ Access Token berlaku 5 detik
+      expiresIn: '15m', // ✅ Access Token berlaku 5 detik
     });
 
     const payload_refresh_token = { sub: user.id };
@@ -179,7 +179,7 @@ async createUser({ email, password }: AuthDto): Promise<User> {
 
   const newAccessToken = this.jwtService.sign(
     { sub: user.id, email: user.email },
-    { secret: this.configService.get('JWT_SECRET'), expiresIn: '5s' }
+    { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' }
   );
 
   const newRefreshToken = this.jwtService.sign(
