@@ -6,7 +6,6 @@ import ChatLayout from '../components/chat/ChatLayout';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
 import { UserProfileInfo } from '../components/common';
-import { conversationAPI } from '../services/api/conversation.api';
 import styles from './Dashboard/Dashboard.module.css';
 
 export interface ChatPageProps {
@@ -33,6 +32,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     handleNewChat,
     handleEditMessage,
     handleDeleteConversation,
+    handleShareConversation,
     // File upload
     imagePreviews,
     selectedImageIndex,
@@ -122,10 +122,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     setIsGeneratingLink(true);
     try {
       // Generate share URL
-      const response = await conversationAPI.shareConversation(id, '');
-      
-      if (response.shared_url) {
-        const fullUrl = `${window.location.origin}/shared/${response.shared_url}`;
+      const shareUrl = await handleShareConversation(id);
+
+      if (shareUrl) {
+        const fullUrl = `${window.location.origin}/shared/${shareUrl}`;
         setShareUrl(fullUrl);
       } else {
         alert('Failed to generate share link');

@@ -13,6 +13,7 @@ interface UseConversationReturn {
   selectConversation: (conversationId: string) => void;
   setActiveConversation: (conversationId: string) => void;
   deleteConversation: (conversationId: string) => Promise<boolean>;
+  shareConversation: (conversationId: string, path:string) => Promise<string | null>;
 }
 
 export const useConversation = (userId?: string): UseConversationReturn => {
@@ -111,6 +112,17 @@ export const useConversation = (userId?: string): UseConversationReturn => {
     }
   };
 
+  const shareConversation = async (conversationId: string, path:string): Promise<string | null> => {
+    try {
+      const response = await conversationAPI.shareConversation(conversationId, path);
+      return response.shared_url || null;
+    } catch (error) {
+      console.error('Failed to share conversation:', error);
+      setError(error instanceof Error ? error.message : 'Failed to share conversation');
+      return null;
+    }
+  };
+
   const selectConversation = (conversationId: string) => {
     // Update active state in chat history
     setChatHistory(prev => 
@@ -145,5 +157,6 @@ export const useConversation = (userId?: string): UseConversationReturn => {
     selectConversation,
     setActiveConversation,
     deleteConversation,
+    shareConversation,
   };
 };

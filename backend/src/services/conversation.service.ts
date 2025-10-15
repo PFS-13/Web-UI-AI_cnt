@@ -24,7 +24,9 @@ export class ConversationService {
     }
     return await this.conversationsRepository.findOne({ where: { user_id } });
   }
-
+  async findOwnerConversation(conversation_id: UUID): Promise<Conversation | null> {
+    return await this.conversationsRepository.findOne({ select: { user_id: true }, where: { conversation_id } });
+  }
   async findAllByUserId(user_id: UUID): Promise<Conversation[]> {
     return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }
@@ -75,6 +77,22 @@ export class ConversationService {
       };
     }
   }
+
+  async getShared(shared_url: UUID) {
+    try {
+      const existingConversation = await this.conversationsRepository.findOne({ where: { shared_url } });
+      if (!existingConversation) {
+        throw new NotFoundException('URL not found');
+      }
+      const path = existingConversation.shared_path;
+      console.log(path);
+      return { path };
+    } catch (error) {
+      return {
+        message: `Failed to get shared conversation: ${error.message}`,
+      };
+    } 
+  }   
   
   async edit(conversation_id : UUID, title : string): Promise<{ message: string; }> {
     try {

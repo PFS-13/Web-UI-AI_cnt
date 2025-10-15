@@ -55,6 +55,7 @@ interface UseChatReturn {
   handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
   handleEditMessage: (messageId: number, content: string, is_edited?: boolean) => void;
   handleSelectConversation: (conversation: any) => void;
+  handleShareConversation: (conversationId: string) => Promise<string | null>;
   handleNewChat: () => void;
   scrollToBottom: () => void;
   handleDeleteConversation: (conversationId: string) => void;
@@ -170,6 +171,16 @@ const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) 
 
 
 
+const handleShareConversation = async (conversationId: string) => {
+  try {
+    const response = await conversation.shareConversation(conversationId, path.join(','));
+    return response
+  } catch (error) {
+    console.error('Failed to share conversation:', error);
+    return null
+  }
+};
+
 
 const handleChangePath = async (message_id: number, type: string, edited_from_message_id?: number) => {
   try {
@@ -267,6 +278,11 @@ const handleChangePath = async (message_id: number, type: string, edited_from_me
     console.error("Error in handleChangePath:", error);
   }
 };
+
+useEffect(() => {
+  console.log("the all message id updated", allMessagesId);
+  console.log("the path", path);
+}, [path, allMessagesId]);
 
 const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
   // Inline form edit sudah dihandle di MessageList component
@@ -393,7 +409,6 @@ const handleEditMessage = async (messageId: number, content: string, is_edited?:
     }
   };
 
-  // contoh upload multiple files (1 request per file)
 
 async function uploadFiles(files: File[], message_id: number) {
   for (const file of files) {
@@ -435,6 +450,7 @@ const handleDeleteConversation = async (conversationId: string) => {
       setInputValue('');
       setChatMessages(prev => [...prev, userMessage]);
       setIsLoading(true);
+      console.log("the last chat", fileUpload.uploadedImages[0]);
       if (mode === 'new' && userId) {
         // Create new conversation
         const newConversation = await conversation.createNewConversation(userId);
@@ -446,7 +462,7 @@ const handleDeleteConversation = async (conversationId: string) => {
             is_attach_file: fileUpload.uploadedImages.length > 0,
             parent_message_id: null,
             edited_from_message_id: null
-          });
+          }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
 
           setChatMessages(prev => {
           const updated = [...prev];
@@ -472,6 +488,7 @@ const handleDeleteConversation = async (conversationId: string) => {
         }
       } else if (mode === 'existing' && conversationId) {
         // Continue existing conversation        
+        console.log("fILE YANG ", fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
         const response = await messageAPI.sendMessage({ 
           content: userMessage.content,
           conversation_id: conversationId,
@@ -479,7 +496,7 @@ const handleDeleteConversation = async (conversationId: string) => {
           is_attach_file: fileUpload.uploadedImages.length > 0,
           parent_message_id: lastChat,
           edited_from_message_id: undefined
-        });
+        }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
 
         setChatMessages(prev => {
           const updated = [...prev];
@@ -604,6 +621,7 @@ const handleDeleteConversation = async (conversationId: string) => {
     handleSelectConversation,
     handleNewChat,
     scrollToBottom,
+    handleShareConversation,
     handleDeleteConversation,
     
     // File upload actions (re-exported for convenience)

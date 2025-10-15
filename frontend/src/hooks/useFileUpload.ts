@@ -47,10 +47,10 @@ export const useFileUpload = (): UseFileUploadReturn => {
 
     Array.from(files).forEach((file) => {
       // Validasi file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select only image files');
-        return;
-      }
+      // if (!file.type.startsWith('image/')) {
+      //   alert('Please select only image files');
+      //   return;
+      // }
 
       // Validasi ukuran file (max 5MB)
       if (file.size > 5 * 1024 * 1024) {

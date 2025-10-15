@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm/dist/typeorm.module';
 import { Token } from 'src/entity/token.entity';
 import { GoogleStrategy } from 'src/auth/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RefreshToken } from 'src/entity/refresh-tokens.entity';
 
 @Module({
   imports: [
@@ -27,6 +28,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
     }),
       TypeOrmModule.forFeature([Token]),
+      TypeOrmModule.forFeature([RefreshToken]),
+
 
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, TokenService, GoogleStrategy],

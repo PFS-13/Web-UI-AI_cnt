@@ -2,15 +2,18 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './user.service';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { User, AuthProvider } from '../entity/user.entity';
 import { Token, TokenType} from '../entity/token.entity';
 import { TokenService } from './token.service';
+import { RefreshToken } from 'src/entity/refresh-tokens.entity';
 import { ConfigService } from '@nestjs/config';
 import { AuthDto,VerifyOtpDto} from '../dtos/auth.dto';
 import { createTransport, Transporter } from 'nodemailer';
 import * as bcrypt from 'bcrypt';
-import {UUID,randomInt}  from 'crypto';
+import {UUID,randomInt,randomUUID}  from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+
 
 
 @Injectable()
@@ -18,11 +21,15 @@ export class AuthService {
     private transporter: Transporter;
     
   constructor(
+    @InjectRepository(RefreshToken)
+    private refreshRepo: Repository<RefreshToken>,
     private usersService: UsersService,
     private jwtService: JwtService,
     private tokenService: TokenService,
     private readonly dataSource: DataSource,
-    private configService: ConfigService
+    private configService: ConfigService,
+    
+    
 
   ) {
     this.transporter = createTransport({
@@ -148,23 +155,107 @@ async createUser({ email, password }: AuthDto): Promise<User> {
     return result;
   }
 
-  async login(loginDto: AuthDto): Promise<any> {
+    async login(loginDto: AuthDto) {
     const user = await this.validateUser(loginDto);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    const payload_access_token = { email: user.email, sub: user.id }; 
-    const access_token = this.jwtService.sign(payload_access_token, {
-      secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '15m', // ✅ Access Token berlaku 5 detik
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+
+    const accessToken = this.signAccessToken(user);
+    const { refreshToken, refreshJti, expires_at } = await this.createRefreshToken(user.id);
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      refresh_jti: refreshJti,
+      refresh_expires_at: expires_at,
+    };
+  }
+
+  private signAccessToken(user: any) {
+    const payload = { email: user.email, sub: user.id };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '15m',
+    });
+  }
+
+  async createRefreshToken(userId: string) {
+    const jti = randomUUID();
+    const expiresIn = '7d';
+    const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // sign a JWT that includes jti as id
+    const refreshToken = this.jwtService.sign(
+      { sub: userId, jti },
+      { secret: process.env.JWT_REFRESH_SECRET, expiresIn }
+    );
+
+     try {
+    // create returns instance but belum persist
+    const refreshTokenEntity = this.refreshRepo.create({
+      id: jti,
+      user_id: userId,
+      expires_at,
+      revoked: false,
     });
 
-    const payload_refresh_token = { sub: user.id };
-    const refresh_token = this.jwtService.sign(payload_refresh_token, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: '7d', // ✅ Refresh Token berlaku 7 hari
-    });
-    return { access_token, refresh_token };
+    // simpan ke DB (await!)
+    const saved = await this.refreshRepo.save(refreshTokenEntity);
+
+    // logging hasil penyimpanan
+    console.log('Refresh token saved:', { id: saved.id, user_id: saved.user_id, created_at: saved.created_at });
+
+    return { refreshToken, refreshJti: jti, expires_at };
+  } catch (err) {
+    console.log('Failed to save refresh token', err);
+    throw err; // atau tangani sesuai kebijakan
+  }
+  }
+
+  async rotateRefreshToken(refreshJwt: string) {
+    // verify signature (throws if invalid/expired)
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(refreshJwt, { secret: process.env.JWT_REFRESH_SECRET });
+    } catch (err) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const jti = payload.jti as string;
+    const userId = payload.sub as string;
+    if (!jti || !userId) throw new UnauthorizedException('Invalid refresh token payload');
+
+    const tokenRow = await this.refreshRepo.findOne({ where: { id: jti } });
+
+    if (!tokenRow) {
+      // Possible token reuse (refresh JWT valid but jti missing) -> revoke ALL sessions for user
+      await this.revokeAllRefreshTokensForUser(userId);
+      // this.logger.warn(`Possible refresh token reuse for user ${userId}`);
+      throw new UnauthorizedException('Refresh token reuse detected');
+    }
+
+    if (tokenRow.revoked || tokenRow.expires_at.getTime() < Date.now()) {
+      // revoked or expired
+      await this.revokeAllRefreshTokensForUser(userId);
+      throw new UnauthorizedException('Refresh token revoked or expired');
+    }
+
+    // Rotation: revoke/delete old token, create and persist new refresh token
+    tokenRow.revoked = true;
+    await this.refreshRepo.save(tokenRow);
+
+    const { refreshToken: newRefreshToken, refreshJti, expires_at } = await this.createRefreshToken(userId);
+    const accessToken = this.signAccessToken({ id: userId, email: payload.email ?? '' });
+
+    return { accessToken, newRefreshToken, refreshJti, expires_at, userId };
+  }
+
+    async revokeAllRefreshTokensForUser(user_id: string) {
+    await this.refreshRepo.update({ user_id}, { revoked: true });
+  }
+
+  // logout: revoke one refresh token by jti
+  async revokeRefreshTokenByJti(jti: string) {
+    await this.refreshRepo.update({ id: jti }, { revoked: true });
   }
 
   async refresh(refreshToken: string) {
