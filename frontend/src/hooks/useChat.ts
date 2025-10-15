@@ -27,6 +27,7 @@ interface UseChatReturn {
   lastChat: number | null;
   path: number[];
   allMessagesId: number[][];
+  conversationId?: string;
   
   // File upload (from useFileUpload)
   uploadedImages: File[];
@@ -149,28 +150,7 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
   
 
 
-const findPathIndex = (arrays: number[][], edited_id: number) => {
-  console.groupCollapsed(`[findPathIndex] search edited_id=${edited_id}`);
-  console.debug('arrays length:', arrays.length);
-
-  for (let i = 0; i < arrays.length; i++) {
-    const arr = arrays[i];
-    console.debug(`outerIndex=${i} (len=${arr.length}) ->`, arr);
-
-    const innerIndex = arr.indexOf(edited_id);
-    console.debug(`  checked outerIndex=${i}, innerIndex=${innerIndex}`);
-
-    if (innerIndex !== -1) {
-      console.log(`[findPathIndex] FOUND edited_id=${edited_id} at outerIndex=${i}, innerIndex=${innerIndex}`);
-      console.groupEnd();
-      return { outerIndex: i, innerIndex };
-    }
-  }
-
-  console.log(`[findPathIndex] NOT FOUND edited_id=${edited_id}`);
-  console.groupEnd();
-  return { outerIndex: -1, innerIndex: -1 };
-};
+// Removed findPathIndex as it's no longer needed with path-based navigation
 
 const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) => {
   setAllMessagesId(prev => {
@@ -192,64 +172,54 @@ const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) 
 
 const handleChangePath = async (message_id: number, type: string) => {
   try {
-    // Get chain data untuk message ini
-    const chainResponse = await messageAPI.getChainedMessage(message_id);
-    if (!chainResponse || !chainResponse.chain || chainResponse.chain.length <= 1) {
-      console.log("No chain data available for message:", message_id);
+    console.log(`Changing path for message ${message_id}, type: ${type}`);
+    
+    // Get all paths for this conversation
+    const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
+    const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+      if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+        // Extract IDs from message objects
+        return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+      }
+      return [];
+    }).filter((path: number[]) => path.length > 0);
+    
+    console.log("All available paths:", allPaths);
+    
+    // Find current path containing this message
+    const currentPath = allPaths.find(path => path.includes(message_id));
+    if (!currentPath) {
+      console.log(`No path found containing message ${message_id}`);
       return;
     }
-
-    const chain = chainResponse.chain;
-    console.log("Chain data:", chain);
-    console.log("Navigation type:", type);
-
-    // Find current message index in chain
-    const currentIndex = chain.indexOf(message_id);
-    if (currentIndex === -1) {
-      console.log("Message not found in chain");
-      return;
-    }
-
-    let targetMessageId: number;
+    
+    const currentPathIndex = allPaths.indexOf(currentPath);
+    console.log(`Current path index: ${currentPathIndex}, path:`, currentPath);
+    
+    let targetPath: number[];
     
     if (type === 'next') {
-      // Navigate to next version in chain
-      if (currentIndex + 1 >= chain.length) {
-        console.log("Already at latest version");
+      // Navigate to next path
+      if (currentPathIndex + 1 >= allPaths.length) {
+        console.log("Already at latest path");
         return;
       }
-      targetMessageId = chain[currentIndex + 1];
+      targetPath = allPaths[currentPathIndex + 1];
     } else {
-      // Navigate to previous version in chain
-      if (currentIndex - 1 < 0) {
-        console.log("Already at original version");
+      // Navigate to previous path
+      if (currentPathIndex - 1 < 0) {
+        console.log("Already at original path");
         return;
       }
-      targetMessageId = chain[currentIndex - 1];
-    }
-
-    console.log("Target message ID:", targetMessageId);
-
-    // Find target message in allMessagesId
-    const { outerIndex, innerIndex } = findPathIndex(allMessagesId, targetMessageId);
-    if (outerIndex === -1 || innerIndex === -1) {
-      console.log("Target message not found in allMessagesId");
-      return;
-    }
-
-    // Update path to show target message
-    const currentPath = allMessagesId[outerIndex];
-    const index = path.indexOf(message_id);
-    if (index !== -1) {
-      path.splice(index);
+      targetPath = allPaths[currentPathIndex - 1];
     }
     
-    // Add the target path
-    const filtered = currentPath.filter(num => !path.includes(num));
-    setPath(prev => [...prev, ...filtered]);
-
-    console.log("Updated path:", path);
-    console.log("All message IDs:", allMessagesId);
+    console.log(`Target path:`, targetPath);
+    
+    // Update path to show target path
+    setPath(targetPath);
+    
+    console.log("Updated path:", targetPath);
 
   } catch (error) {
     console.error("Error in handleChangePath:", error);
@@ -560,6 +530,7 @@ const handleDeleteConversation = async (conversationId: string) => {
     lastChat,
     path,
     allMessagesId,
+    conversationId,
     
     // File upload
     ...fileUpload,

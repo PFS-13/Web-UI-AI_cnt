@@ -25,6 +25,7 @@ interface MessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement>;
+  conversationId?: string;
   onChangePath?: (messageId: number, type: string, edited_from_message_id?: number) => void;
   OnEditMessage?: (messageId: number, content: string, is_edited?: boolean) => void;
 }
@@ -34,6 +35,7 @@ const MessageListInternal: React.FC<MessageListProps> = ({
   messages,
   isLoading,
   messagesContainerRef,
+  conversationId,
   onChangePath,
   OnEditMessage
 }) => {
@@ -46,65 +48,76 @@ const MessageListInternal: React.FC<MessageListProps> = ({
   const [isNewMessage, setIsNewMessage] = useState<boolean>(false);
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
-  // Load chain data for messages that have chains
+  // Load chain data based on path system
   useEffect(() => {
     const loadChainData = async () => {
-      console.log('Loading chain data for messages:', messages);
-      for (const message of messages) {
-        if (message.id) {
-          console.log(`Checking message ${message.id}:`, {
-            is_edited: message.is_edited,
-            edited_from_message_id: message.edited_from_message_id,
-            content: message.content.substring(0, 50) + '...'
-          });
-          
-          // Coba load chain data untuk semua messages (fallback approach)
-          try {
-            console.log(`Loading chain data for message ${message.id}`);
-            const response = await messageAPI.getChainedMessage(message.id);
-            console.log(`Chain response for message ${message.id}:`, response);
-            
-            // Pastikan response.chain ada dan merupakan array
-            console.log(`Chain validation for message ${message.id}:`, {
-              hasResponse: !!response,
-              hasChain: !!(response && response.chain),
-              isArray: !!(response && response.chain && Array.isArray(response.chain)),
-              chainLength: response && response.chain ? response.chain.length : 'N/A',
-              chainContent: response && response.chain ? response.chain : 'N/A'
+      if (!conversationId) return;
+      
+      try {
+        console.log('Loading path data for conversation:', conversationId);
+        
+        // Get all paths for this conversation
+        const allPathsResponse = await messageAPI.getPathMessages(conversationId);
+        console.log('All paths response:', allPathsResponse);
+        
+        // Extract paths from response - Backend returns array of objects with path_messages
+        const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+          if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+            // Extract IDs from message objects
+            return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+          }
+          return [];
+        }).filter((path: number[]) => path.length > 0);
+        
+        console.log('All paths:', allPaths);
+        
+        // Find chains for each message - only for edited messages
+        for (const message of messages) {
+          if (message.id) {
+            console.log(`Checking message ${message.id}:`, {
+              is_edited: message.is_edited,
+              edited_from_message_id: message.edited_from_message_id,
+              content: message.content.substring(0, 50) + '...'
             });
             
-            if (response && response.chain && Array.isArray(response.chain) && response.chain.length > 1) {
-              console.log(`Setting chain data for message ${message.id}:`, {
-                currentIndex: 1,
-                totalChains: response.chain.length
-              });
-              setChainData(prev => ({
-                ...prev,
-                [message.id!]: {
-                  currentIndex: 1, // Default to first chain
-                  totalChains: response.chain.length
-                }
-              }));
+            // Only check for chains if message is edited or has edited_from_message_id
+            if (message.is_edited || message.edited_from_message_id) {
+              // Find all paths that contain this message
+              const pathsContainingMessage = allPaths.filter(path => 
+                path.includes(message.id!)
+              );
+              
+              console.log(`Paths containing message ${message.id}:`, pathsContainingMessage);
+              
+              // If message is in multiple paths, it has chains
+              if (pathsContainingMessage.length > 1) {
+                console.log(`Setting chain data for message ${message.id}:`, {
+                  currentIndex: 1,
+                  totalChains: pathsContainingMessage.length
+                });
+                
+                setChainData(prev => ({
+                  ...prev,
+                  [message.id!]: {
+                    currentIndex: 1, // Default to first chain
+                    totalChains: pathsContainingMessage.length
+                  }
+                }));
+              } else {
+                console.log(`Message ${message.id} has no chains (only in ${pathsContainingMessage.length} path)`);
+              }
             } else {
-              console.log(`No valid chain data for message ${message.id}:`, {
-                reason: !response ? 'No response' : 
-                        !response.chain ? 'No chain property' :
-                        !Array.isArray(response.chain) ? 'Chain is not array' :
-                        response.chain.length <= 1 ? `Chain length is ${response.chain.length} (need > 1)` : 'Unknown',
-                response: response
-              });
+              console.log(`Message ${message.id} is not edited, skipping chain check`);
             }
-          } catch (error) {
-            console.error(`Error loading chain data for message ${message.id}:`, error);
           }
-          // Untuk message yang tidak memiliki chain, TIDAK set chainData sama sekali
-          // Ini akan membuat chainInfo = null dan totalChains = 1 (fallback)
         }
+      } catch (error) {
+        console.error('Error loading path data:', error);
       }
     };
 
     loadChainData();
-  }, [messages]);
+  }, [messages, conversationId]);
 
   // Detect new AI messages for typing effect
   useEffect(() => {
@@ -241,31 +254,75 @@ const MessageListInternal: React.FC<MessageListProps> = ({
     setIsTyping(true);
   };
 
-  const handleNavigateLeft = (messageId: number) => {
-    const currentChain = chainData[messageId];
-    if (currentChain && currentChain.currentIndex > 1) {
-      setChainData(prev => ({
-        ...prev,
-        [messageId]: {
-          ...currentChain,
-          currentIndex: currentChain.currentIndex - 1
+  const handleNavigateLeft = async (messageId: number) => {
+    try {
+      console.log(`Navigating left from message ${messageId}`);
+      
+      // Get all paths for this conversation
+      const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
+      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+        if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+          // Extract IDs from message objects
+          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
         }
-      }));
-      onChangePath?.(messageId, 'prev');
+        return [];
+      }).filter((path: number[]) => path.length > 0);
+      
+      // Find current path containing this message
+      const currentPath = allPaths.find(path => path.includes(messageId));
+      if (!currentPath) {
+        console.log(`No path found containing message ${messageId}`);
+        return;
+      }
+      
+      // Find previous path (path that shares common ancestor but is different)
+      const currentPathIndex = allPaths.indexOf(currentPath);
+      const previousPath = allPaths[currentPathIndex - 1];
+      
+      if (previousPath) {
+        console.log(`Navigating to previous path:`, previousPath);
+        onChangePath?.(messageId, 'prev');
+      } else {
+        console.log(`No previous path available`);
+      }
+    } catch (error) {
+      console.error(`Error navigating left from message ${messageId}:`, error);
     }
   };
 
-  const handleNavigateRight = (messageId: number) => {
-    const currentChain = chainData[messageId];
-    if (currentChain && currentChain.currentIndex < currentChain.totalChains) {
-      setChainData(prev => ({
-        ...prev,
-        [messageId]: {
-          ...currentChain,
-          currentIndex: currentChain.currentIndex + 1
+  const handleNavigateRight = async (messageId: number) => {
+    try {
+      console.log(`Navigating right from message ${messageId}`);
+      
+      // Get all paths for this conversation
+      const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
+      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+        if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+          // Extract IDs from message objects
+          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
         }
-      }));
-      onChangePath?.(messageId, 'next');
+        return [];
+      }).filter((path: number[]) => path.length > 0);
+      
+      // Find current path containing this message
+      const currentPath = allPaths.find(path => path.includes(messageId));
+      if (!currentPath) {
+        console.log(`No path found containing message ${messageId}`);
+        return;
+      }
+      
+      // Find next path (path that shares common ancestor but is different)
+      const currentPathIndex = allPaths.indexOf(currentPath);
+      const nextPath = allPaths[currentPathIndex + 1];
+      
+      if (nextPath) {
+        console.log(`Navigating to next path:`, nextPath);
+        onChangePath?.(messageId, 'next');
+      } else {
+        console.log(`No next path available`);
+      }
+    } catch (error) {
+      console.error(`Error navigating right from message ${messageId}:`, error);
     }
   };
   return (

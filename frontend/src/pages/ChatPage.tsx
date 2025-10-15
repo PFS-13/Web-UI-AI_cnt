@@ -23,6 +23,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     inputValue,
     isLoading,
     messagesContainerRef,
+    conversationId,
     handleInputChange,
     handleKeyDown,
     handleSubmit,
@@ -216,6 +217,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
             messages={chatMessages}
             isLoading={isLoading}
             messagesContainerRef={messagesContainerRef as React.RefObject<HTMLDivElement>}
+            conversationId={conversationId}
             onChangePath={handleChangePath}
             OnEditMessage={handleEditMessage}
           />
