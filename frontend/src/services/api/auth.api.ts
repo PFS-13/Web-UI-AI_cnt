@@ -12,8 +12,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 class AuthAPI {
   private isRefreshing = false;
   private refreshPromise: Promise<Response> | null = null;
-
-  // Hanya halaman ini yang redirect ke login bila refresh gagal
   private protectedPaths = [
     '/chat',
     '/c/',
@@ -25,69 +23,87 @@ class AuthAPI {
     return this.protectedPaths.some(p => path.startsWith(p));
   }
 
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const config: RequestInit = {
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
+async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const config: RequestInit = {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  };
 
-    let response = await fetch(url, config);
+  let response = await fetch(url, config);
 
-    if (response.status === 401) {
-      // Jika refresh sedang berlangsung, tunggu dulu
-      if (this.isRefreshing && this.refreshPromise) {
-        await this.refreshPromise;
+  if (response.status === 401) {
+    // Jika refresh sedang berlangsung, tunggu dulu
+    if (this.isRefreshing && this.refreshPromise) {
+      await this.refreshPromise;
+      response = await fetch(url, config);
+    } else {
+      this.isRefreshing = true;
+      this.refreshPromise = fetch(`${API_BASE_URL}/auth/v1/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const refreshResponse = await this.refreshPromise;
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+
+      const currentPath = window.location.pathname;
+      const isProtected = this.isProtectedPath(currentPath);
+
+      if (refreshResponse.ok) {
+        // refresh token sukses → ulang request
         response = await fetch(url, config);
       } else {
-        this.isRefreshing = true;
-        this.refreshPromise = fetch(`${API_BASE_URL}/auth/v1/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-
-        const refreshResponse = await this.refreshPromise;
-        this.isRefreshing = false;
-        this.refreshPromise = null;
-
-        const currentPath = window.location.pathname;
-        const isProtected = this.isProtectedPath(currentPath);
-
-        if (refreshResponse.ok) {
-          // refresh token sukses → ulang request
-          response = await fetch(url, config);
+        // refresh gagal → hanya untuk halaman protected
+        const errorData = await this.safeParseJSON(refreshResponse);
+        if (isProtected) {
+          console.warn('[Auth] Refresh token expired, redirecting to login...');
+          window.location.replace('/login');
         } else {
-          // refresh gagal → hanya untuk halaman protected
-          if (isProtected) {
-            console.warn('[Auth] Refresh token expired, redirecting to login...');
-            window.location.replace('/login');
-          } else {
-            // Non-protected route, jangan spam error
-            console.info('[Auth] Unauthorized (unprotected path), ignoring 401.');
-          }
-          throw new Error('Refresh token expired');
+          console.info('[Auth] Unauthorized (unprotected path), ignoring 401.');
         }
+        throw { message: 'Refresh token expired', detail: errorData };
       }
     }
-
-    const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
-
-    if (!response.ok) {
-      const currentPath = window.location.pathname;
-      // Hanya log error kalau sedang di halaman protected
-      if (this.isProtectedPath(currentPath)) {
-        console.error(`[Auth] Request failed: ${response.status} ${response.statusText}`, data);
-      }
-      throw data;
-    }
-
-    return data;
   }
+
+  // ✅ Tangani response 204 (No Content)
+  if (response.status === 204) {
+    return null as unknown as T;
+  }
+
+  // ✅ Parsing JSON aman (tidak crash)
+  const data = await this.safeParseJSON(response);
+
+  // ✅ Error handling konsisten
+  if (!response.ok) {
+    const currentPath = window.location.pathname;
+    if (this.isProtectedPath(currentPath)) {
+      console.error(`[Auth] Request failed: ${response.status} ${response.statusText}`, data);
+    }
+    throw {
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    };
+  }
+
+  return data;
+}
+
+private async safeParseJSON(response: Response): Promise<any> {
+  try {
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
 
   async getMe(): Promise<User> {
     return this.request('/auth/v1/me', { method: 'GET' });
