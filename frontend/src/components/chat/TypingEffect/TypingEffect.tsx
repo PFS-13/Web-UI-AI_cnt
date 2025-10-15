@@ -19,7 +19,7 @@ const TypingEffect: React.FC<TypingEffectProps> = ({
   const [displayedText, setDisplayedText] = useState('');
   const currentTextRef = useRef('');
   const isTypingRef = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCompleteRef = useRef(onComplete);
   const onStartRef = useRef(onStart);
 

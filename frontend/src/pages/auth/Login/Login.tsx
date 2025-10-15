@@ -60,7 +60,6 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await authAPI.checkEmail(email);
-      console.log('Check email response:', response);
       if (response.provider == 'google') {
         window.location.href = `${import.meta.env.VITE_API_URL}/auth/google?email=${encodeURIComponent(email)}`;
       } else if(response.provider == 'manual') {
@@ -82,17 +81,17 @@ const Login: React.FC = () => {
 
   const handleMicrosoftLogin = () => {
     // Implement Microsoft login
-    console.log('Microsoft login clicked');
+    // Microsoft login not implemented
   };
 
   const handleAppleLogin = () => {
     // Implement Apple login
-    console.log('Apple login clicked');
+    // Apple login not implemented
   };
 
   const handlePhoneLogin = () => {
     // Implement phone login
-    console.log('Phone login clicked');
+    // Phone login not implemented
   };
   if (isCheckingAuth) {
     return (

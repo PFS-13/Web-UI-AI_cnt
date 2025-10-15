@@ -109,7 +109,6 @@ export const saveUserProfileToAPI = async (profile: UserProfile): Promise<any> =
   // Simulasi API call untuk sekarang
   return new Promise((resolve) => {
     setTimeout(() => {
-      console.log('Saving user profile to API:', profile);
       resolve({ success: true, profile });
     }, 1000);
   });

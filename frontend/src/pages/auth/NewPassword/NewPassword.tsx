@@ -62,7 +62,6 @@ const NewPassword: React.FC = () => {
     
     try {
       // Simulate API call untuk reset password
-      console.log('Resetting password to:', newPassword, user_id);
       await authAPI.changePassword(user_id, newPassword);
       navigate('/login');
     } catch (error) {

@@ -118,14 +118,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({
     if (snippetEnd < content.length) snippet = snippet + '...';
     
     // Test the snippet extraction with example data
-    if (import.meta.env.DEV) {
-      console.log('Snippet extraction test:', {
-        searchTerm,
-        snippet,
-        containsTerm: snippet.toLowerCase().includes(term),
-        snippetLength: snippet.length
-      });
-    }
+    // Debug logging removed for production
     
     return snippet;
   };

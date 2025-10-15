@@ -5,6 +5,10 @@ import TypingEffect from './TypingEffect';
 import MarkdownRenderer from './MarkdownRenderer';
 import { MarkdownProvider, useMarkdownContext } from './MarkdownRenderer/MarkdownContext';
 import { messageAPI } from '../../services/api/message.api';
+import { 
+  calculateAllChainData, 
+  formatChainDataToObject
+} from '../../utils/pathTraversal';
 
 interface ChatMessage {
   id?: number;
@@ -26,6 +30,7 @@ interface MessageListProps {
   isLoading: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement>;
   conversationId?: string;
+  currentPath?: number[]; // Add current path prop
   onChangePath?: (messageId: number, type: string, edited_from_message_id?: number) => void;
   OnEditMessage?: (messageId: number, content: string, is_edited?: boolean) => void;
 }
@@ -36,11 +41,13 @@ const MessageListInternal: React.FC<MessageListProps> = ({
   isLoading,
   messagesContainerRef,
   conversationId,
+  currentPath = [],
   onChangePath,
   OnEditMessage
 }) => {
   const { resetNumbering } = useMarkdownContext();
   const [chainData, setChainData] = useState<ChainData>({});
+  const [isChainDataLoading, setIsChainDataLoading] = useState<boolean>(true);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState<string>('');
   const [typingMessageId, setTypingMessageId] = useState<number | null>(null);
@@ -48,17 +55,22 @@ const MessageListInternal: React.FC<MessageListProps> = ({
   const [isNewMessage, setIsNewMessage] = useState<boolean>(false);
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
-  // Load chain data based on path system
+  // Load chain data using optimized frontend calculation
   useEffect(() => {
     const loadChainData = async () => {
-      if (!conversationId) return;
+      if (!conversationId || !messages.length) {
+        setIsChainDataLoading(false);
+        return;
+      }
+      
+      // Only set loading if we don't have chain data yet
+      if (Object.keys(chainData).length === 0) {
+        setIsChainDataLoading(true);
+      }
       
       try {
-        console.log('Loading path data for conversation:', conversationId);
-        
-        // Get all paths for this conversation
+        // Get all paths from backend (we still need this for complete path information)
         const allPathsResponse = await messageAPI.getPathMessages(conversationId);
-        console.log('All paths response:', allPathsResponse);
         
         // Extract paths from response - Backend returns array of objects with path_messages
         const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
@@ -69,55 +81,22 @@ const MessageListInternal: React.FC<MessageListProps> = ({
           return [];
         }).filter((path: number[]) => path.length > 0);
         
-        console.log('All paths:', allPaths);
+        // Use our utility function to calculate chain data more efficiently
+        const chainDataMap = calculateAllChainData(messages, allPaths, currentPath);
+        const newChainData = formatChainDataToObject(chainDataMap);
         
-        // Find chains for each message - only for edited messages
-        for (const message of messages) {
-          if (message.id) {
-            console.log(`Checking message ${message.id}:`, {
-              is_edited: message.is_edited,
-              edited_from_message_id: message.edited_from_message_id,
-              content: message.content.substring(0, 50) + '...'
-            });
-            
-            // Only check for chains if message is edited or has edited_from_message_id
-            if (message.is_edited || message.edited_from_message_id) {
-              // Find all paths that contain this message
-              const pathsContainingMessage = allPaths.filter(path => 
-                path.includes(message.id!)
-              );
-              
-              console.log(`Paths containing message ${message.id}:`, pathsContainingMessage);
-              
-              // If message is in multiple paths, it has chains
-              if (pathsContainingMessage.length > 1) {
-                console.log(`Setting chain data for message ${message.id}:`, {
-                  currentIndex: 1,
-                  totalChains: pathsContainingMessage.length
-                });
-                
-                setChainData(prev => ({
-                  ...prev,
-                  [message.id!]: {
-                    currentIndex: 1, // Default to first chain
-                    totalChains: pathsContainingMessage.length
-                  }
-                }));
-              } else {
-                console.log(`Message ${message.id} has no chains (only in ${pathsContainingMessage.length} path)`);
-              }
-            } else {
-              console.log(`Message ${message.id} is not edited, skipping chain check`);
-            }
-          }
-        }
+        // Update state with all calculated chain data
+        setChainData(newChainData);
+        setIsChainDataLoading(false); // Clear loading state
+        
       } catch (error) {
         console.error('Error loading path data:', error);
+        setIsChainDataLoading(false); // Clear loading state even on error
       }
     };
 
     loadChainData();
-  }, [messages, conversationId]);
+  }, [messages, conversationId, currentPath]);
 
   // Detect new AI messages for typing effect
   useEffect(() => {
@@ -192,7 +171,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
     if (message) {
       try {
         await navigator.clipboard.writeText(message.content);
-        console.log('Message copied to clipboard:', message.content);
       } catch (err) {
         console.error('Failed to copy message:', err);
         // Fallback for older browsers
@@ -202,7 +180,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
         textArea.select();
         try {
           document.execCommand('copy');
-          console.log('Message copied to clipboard (fallback):', message.content);
         } catch (fallbackErr) {
           console.error('Fallback copy failed:', fallbackErr);
         }
@@ -214,7 +191,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
   const handleEditMessage = (messageId: number) => {
     const message = messages.find(m => m.id === messageId);
     if (message) {
-      console.log('Edit message clicked:', { messageId, content: message.content, is_edited: message.is_edited });
       setEditingMessageId(messageId);
       setEditContent(message.content);
     }
@@ -256,7 +232,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
 
   const handleNavigateLeft = async (messageId: number) => {
     try {
-      console.log(`Navigating left from message ${messageId}`);
       
       // Get all paths for this conversation
       const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
@@ -271,7 +246,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       // Find current path containing this message
       const currentPath = allPaths.find(path => path.includes(messageId));
       if (!currentPath) {
-        console.log(`No path found containing message ${messageId}`);
         return;
       }
       
@@ -280,10 +254,8 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       const previousPath = allPaths[currentPathIndex - 1];
       
       if (previousPath) {
-        console.log(`Navigating to previous path:`, previousPath);
         onChangePath?.(messageId, 'prev');
       } else {
-        console.log(`No previous path available`);
       }
     } catch (error) {
       console.error(`Error navigating left from message ${messageId}:`, error);
@@ -292,7 +264,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
 
   const handleNavigateRight = async (messageId: number) => {
     try {
-      console.log(`Navigating right from message ${messageId}`);
       
       // Get all paths for this conversation
       const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
@@ -307,7 +278,6 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       // Find current path containing this message
       const currentPath = allPaths.find(path => path.includes(messageId));
       if (!currentPath) {
-        console.log(`No path found containing message ${messageId}`);
         return;
       }
       
@@ -316,10 +286,8 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       const nextPath = allPaths[currentPathIndex + 1];
       
       if (nextPath) {
-        console.log(`Navigating to next path:`, nextPath);
         onChangePath?.(messageId, 'next');
       } else {
-        console.log(`No next path available`);
       }
     } catch (error) {
       console.error(`Error navigating right from message ${messageId}:`, error);
@@ -384,16 +352,40 @@ const MessageListInternal: React.FC<MessageListProps> = ({
                   
                   {/* Chain Message Controls - untuk semua messages */}
                   {message.id && (
-                    <ChainMessageControls
-                      messageId={message.id}
-                      isUser={message.is_user}
-                      currentChainIndex={chainInfo?.currentIndex || 1}
-                      totalChains={chainInfo?.totalChains || 1}
-                      onCopy={handleCopyMessage}
-                      onEdit={message.is_user ? handleEditMessage : undefined}
-                      onNavigateLeft={handleNavigateLeft}
-                      onNavigateRight={handleNavigateRight}
-                    />
+                    <>
+                      {isChainDataLoading ? (
+                        // Loading state - tampilkan skeleton atau loading indicator
+                        <div className={styles.chainControls}>
+                          <div className={styles.controlButton}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                          </div>
+                          {message.is_user && (
+                            <div className={styles.chainIndicator}>
+                              <span style={{ opacity: 0.5 }}>...</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <ChainMessageControls
+                          messageId={message.id}
+                          isUser={message.is_user}
+                          currentChainIndex={chainInfo?.currentIndex || 1}
+                          totalChains={chainInfo?.totalChains || 1}
+                          onCopy={handleCopyMessage}
+                          onEdit={message.is_user ? handleEditMessage : undefined}
+                          onNavigateLeft={handleNavigateLeft}
+                          onNavigateRight={handleNavigateRight}
+                          // Edit-based navigation props
+                          isEdited={message.is_edited}
+                          editedFromMessageId={message.edited_from_message_id}
+                          onChangePath={onChangePath}
+                          // Chain navigation props
+                          allMessages={messages}
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}

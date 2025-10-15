@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import styles from './ChainMessageControls.module.css';
+import { 
+  findChainNavigationTarget
+} from '../../../utils/pathTraversal';
 
 interface ChainMessageControlsProps {
   messageId: number;
@@ -10,6 +13,16 @@ interface ChainMessageControlsProps {
   onEdit?: (messageId: number) => void;
   onNavigateLeft?: (messageId: number) => void;
   onNavigateRight?: (messageId: number) => void;
+  // Edit-based navigation props
+  isEdited?: boolean;
+  editedFromMessageId?: number;
+  onChangePath?: (messageId: number, type: string, edited_from_message_id?: number) => void;
+  // Chain navigation props
+  allMessages?: Array<{
+    id?: number;
+    is_edited?: boolean;
+    edited_from_message_id?: number;
+  }>;
 }
 
 const ChainMessageControls: React.FC<ChainMessageControlsProps> = ({
@@ -20,26 +33,30 @@ const ChainMessageControls: React.FC<ChainMessageControlsProps> = ({
   onCopy,
   onEdit,
   onNavigateLeft,
-  onNavigateRight
+  onNavigateRight,
+  // Edit-based navigation props
+  isEdited = false,
+  editedFromMessageId,
+  onChangePath,
+  // Chain navigation props
+  allMessages = []
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const hasChains = totalChains && totalChains > 1;
   const canNavigateLeft = currentChainIndex > 1;
   const canNavigateRight = currentChainIndex < (totalChains || 1);
+  
+  // Edit-based navigation logic (hanya untuk prev ke original)
+  const hasEditNavigation = editedFromMessageId !== undefined;
+  const canNavigateToOriginal = editedFromMessageId !== undefined;
+  const canNavigateToNext = false; // Tidak ada edit navigation untuk next
+  
+  // Chain navigation logic
+  const hasChainNavigation = allMessages.length > 0 && (isEdited || editedFromMessageId);
+  const canNavigateChainPrev = hasChainNavigation && findChainNavigationTarget(messageId, 'prev', allMessages) !== null;
+  const canNavigateChainNext = hasChainNavigation && findChainNavigationTarget(messageId, 'next', allMessages) !== null;
 
-  // Debug logging
-  console.log(`ChainMessageControls for message ${messageId}:`, {
-    isUser,
-    currentChainIndex,
-    totalChains,
-    hasChains,
-    canNavigateLeft,
-    canNavigateRight,
-    onCopy: !!onCopy,
-    onEdit: !!onEdit,
-    onNavigateLeft: !!onNavigateLeft,
-    onNavigateRight: !!onNavigateRight
-  });
+  // Debug logging removed for production
 
   const handleCopyClick = () => {
     if (onCopy) {
@@ -49,6 +66,30 @@ const ChainMessageControls: React.FC<ChainMessageControlsProps> = ({
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
+    }
+  };
+
+  // Edit-based navigation handlers (hanya untuk prev)
+
+  const handleEditNavigatePrev = () => {
+    if (onChangePath && canNavigateToOriginal && editedFromMessageId) {
+      onChangePath(messageId, 'prev', editedFromMessageId);
+    }
+  };
+
+  // Chain navigation handlers
+  const handleChainNavigatePrev = () => {
+    const targetId = findChainNavigationTarget(messageId, 'prev', allMessages);
+    if (targetId && onChangePath) {
+      onChangePath(targetId, 'prev');
+    }
+  };
+
+  const handleChainNavigateNext = () => {
+    const targetId = findChainNavigationTarget(messageId, 'next', allMessages);
+    if (targetId && onChangePath) {
+      // Pass targetId sebagai edited_from_message_id untuk edit-based navigation
+      onChangePath(targetId, 'next', targetId);
     }
   };
 
@@ -86,15 +127,27 @@ const ChainMessageControls: React.FC<ChainMessageControlsProps> = ({
         </button>
       )}
 
-      {/* Navigation Controls - hanya muncul untuk user messages dan jika ada chains */}
-      {isUser && hasChains && (
+      {/* Navigation Controls - untuk user messages dengan chains, edit navigation, atau chain navigation */}
+      {isUser && (hasChains || hasEditNavigation || hasChainNavigation) && (
         <>
           {/* Left Arrow */}
           <button
-            className={`${styles.controlButton} ${!canNavigateLeft ? styles.disabled : ''}`}
-            onClick={() => canNavigateLeft && onNavigateLeft?.(messageId)}
-            disabled={!canNavigateLeft}
-            title="Previous chain"
+            className={`${styles.controlButton} ${(!canNavigateLeft && !canNavigateToOriginal && !canNavigateChainPrev) ? styles.disabled : ''}`}
+            onClick={() => {
+              if (hasChainNavigation && canNavigateChainPrev) {
+                handleChainNavigatePrev();
+              } else if (hasEditNavigation && canNavigateToOriginal) {
+                handleEditNavigatePrev();
+              } else if (hasChains && canNavigateLeft) {
+                onNavigateLeft?.(messageId);
+              }
+            }}
+            disabled={!canNavigateLeft && !canNavigateToOriginal && !canNavigateChainPrev}
+            title={
+              hasChainNavigation ? "Previous in chain" : 
+              hasEditNavigation ? "Previous version" : 
+              "Previous chain"
+            }
           >
             &lt;
           </button>
@@ -106,10 +159,19 @@ const ChainMessageControls: React.FC<ChainMessageControlsProps> = ({
 
           {/* Right Arrow */}
           <button
-            className={`${styles.controlButton} ${!canNavigateRight ? styles.disabled : ''}`}
-            onClick={() => canNavigateRight && onNavigateRight?.(messageId)}
-            disabled={!canNavigateRight}
-            title="Next chain"
+            className={`${styles.controlButton} ${(!canNavigateRight && !canNavigateToNext && !canNavigateChainNext) ? styles.disabled : ''}`}
+            onClick={() => {
+              if (hasChains && canNavigateRight) {
+                onNavigateRight?.(messageId);
+              } else if (hasChainNavigation && canNavigateChainNext) {
+                handleChainNavigateNext();
+              }
+            }}
+            disabled={!canNavigateRight && !canNavigateChainNext}
+            title={
+              hasChainNavigation ? "Next in chain" : 
+              "Next chain"
+            }
           >
             &gt;
           </button>

@@ -158,11 +158,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     switch(action) {
       case 'share':
         // TODO: Implement share functionality
-        console.log('Share conversation:', chatId);
+        // Share functionality not implemented
         break;
       case 'rename':
         // TODO: Implement rename functionality
-        console.log('Rename conversation:', chatId);
+        // Rename functionality not implemented
         break;
       case 'delete':
         // TODO: Implement delete functionality
