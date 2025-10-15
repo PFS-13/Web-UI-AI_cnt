@@ -26,7 +26,7 @@ export const ROUTES = {
   LOGIN: '/',
   REGISTER: '/register',
   AUTH_CALLBACK: '/auth-callback',
-  DASHBOARD: '/dashboard',
+  DASHBOARD: '/',
   CHAT: '/chat',
   PROFILE: '/profile',
 } as const;

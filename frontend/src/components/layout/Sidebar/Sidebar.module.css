@@ -357,27 +357,27 @@
     height: auto;
     border-right: none;
     border-bottom: 1px solid #333;
-    flex-direction: row;
-    padding: 0.5rem 1rem;
+    flex-direction: column;
+    padding: 0.5rem;
     gap: 0.5rem;
   }
   
   .sidebarMinimized {
     width: 100%;
     min-width: 100%;
-    padding: 0.5rem 1rem;
-    flex-direction: row;
+    padding: 0.5rem;
+    flex-direction: column;
   }
   
   .sidebarHeader {
-    margin-bottom: 0;
-    margin-right: 0.5rem;
-    flex: 1;
+    margin-bottom: 0.5rem;
+    margin-right: 0;
+    flex: none;
   }
   
   .logo {
     margin-bottom: 0;
-    margin-right: 0.5rem;
+    margin-right: 0;
   }
   
   .toggleButton {
@@ -392,7 +392,7 @@
   }
   
   .sidebarButtonMinimized {
-    flex: 1;
+    flex: none;
     margin-bottom: 0;
   }
   

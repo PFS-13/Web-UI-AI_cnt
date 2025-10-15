@@ -22,6 +22,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     inputValue,
     isLoading,
     messagesContainerRef,
+    conversationId,
+    path,
     handleInputChange,
     handleKeyDown,
     handleSubmit,
@@ -216,6 +218,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
             messages={chatMessages}
             isLoading={isLoading}
             messagesContainerRef={messagesContainerRef as React.RefObject<HTMLDivElement>}
+            conversationId={conversationId}
+            currentPath={path}
             onChangePath={handleChangePath}
             OnEditMessage={handleEditMessage}
           />
@@ -248,6 +252,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          autoFocus={mode === 'new'} // Auto focus for new chat
         />
         </main>
       </ChatLayout>

@@ -59,7 +59,7 @@ const InputPassword: React.FC = () => {
 
     try {
       await authAPI.login(email, password);
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       console.error('Login error:', error);
       setPasswordError('Invalid email or password. Please try again.');

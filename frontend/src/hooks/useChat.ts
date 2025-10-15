@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { messageAPI } from '../services/api/message.api';
 import { useConversation } from './useConversation';
 import { useFileUpload } from './useFileUpload';
+import { findLatestMessageInChain } from '../utils/pathTraversal';
 import axios from "axios";
 
 interface ChatMessage {
@@ -27,6 +28,7 @@ interface UseChatReturn {
   lastChat: number | null;
   path: number[];
   allMessagesId: number[][];
+  conversationId?: string;
   
   // File upload (from useFileUpload)
   uploadedImages: File[];
@@ -150,28 +152,7 @@ export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChat
   
 
 
-const findPathIndex = (arrays: number[][], edited_id: number) => {
-  console.groupCollapsed(`[findPathIndex] search edited_id=${edited_id}`);
-  console.debug('arrays length:', arrays.length);
-
-  for (let i = 0; i < arrays.length; i++) {
-    const arr = arrays[i];
-    console.debug(`outerIndex=${i} (len=${arr.length}) ->`, arr);
-
-    const innerIndex = arr.indexOf(edited_id);
-    console.debug(`  checked outerIndex=${i}, innerIndex=${innerIndex}`);
-
-    if (innerIndex !== -1) {
-      console.log(`[findPathIndex] FOUND edited_id=${edited_id} at outerIndex=${i}, innerIndex=${innerIndex}`);
-      console.groupEnd();
-      return { outerIndex: i, innerIndex };
-    }
-  }
-
-  console.log(`[findPathIndex] NOT FOUND edited_id=${edited_id}`);
-  console.groupEnd();
-  return { outerIndex: -1, innerIndex: -1 };
-};
+// Removed findPathIndex as it's no longer needed with path-based navigation
 
 const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) => {
   setAllMessagesId(prev => {
@@ -201,43 +182,101 @@ const handleShareConversation = async (conversationId: string) => {
 };
 
 
-const handleChangePath = async (message_id: number,  type: string, edited_from_message_id?: number) => {
-  console
-  let res = null;
-  if (type === 'next') {
-    res = await messageAPI.getEditedMessageId(message_id);
-  } else {
-    res = {edited_id: edited_from_message_id || -1};
-  }
-  if (res === null || res.edited_id === -1) return;
-  const edited_id = res.edited_id;
-  console.log("the message id", message_id);
-  console.log("the edited id", edited_id);
+const handleChangePath = async (message_id: number, type: string, edited_from_message_id?: number) => {
+  try {
+    // Get all paths for this conversation
+    const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
+    const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+      if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+        // Extract IDs from message objects
+        return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+      }
+      return [];
+    }).filter((path: number[]) => path.length > 0);
+    
+    // Get all messages for chain navigation
+    const allMessageIds = allPaths.flat();
+    const allMessages = await messageAPI.getMessageByIds(allMessageIds);
+    
+    // Find current path containing this message
+    const currentPath = allPaths.find(path => path.includes(message_id));
+    if (!currentPath) {
+      return;
+    }
+    
+    const currentPathIndex = allPaths.indexOf(currentPath);
+    
+    let targetPath: number[];
+    
+    // Handle edit-based navigation
+    if (edited_from_message_id !== undefined) {
+      if (type === 'prev') {
+        // Find path that contains the original message (edited_from_message_id)
+        const originalPath = allPaths.find(path => path.includes(edited_from_message_id));
+        if (originalPath) {
+          targetPath = originalPath;
+        } else {
+          return;
+        }
+      } else {
+        // For 'next' with edited_from_message_id, find the next message in chain edit
+        // Cari message yang diedit dari current message
+        const currentMessage = allMessages.find(msg => msg.id === message_id);
+        if (currentMessage) {
+          const nextMessage = allMessages.find(msg => 
+            msg.edited_from_message_id === message_id && msg.id
+          );
+          
+          if (nextMessage) {
+            // Cari path yang mengandung next message
+            const nextPath = allPaths.find(path => path.includes(nextMessage.id));
+            if (nextPath) {
+              targetPath = nextPath;
+            } else {
+              // Fallback ke next path
+              if (currentPathIndex + 1 >= allPaths.length) {
+                return;
+              }
+              targetPath = allPaths[currentPathIndex + 1];
+            }
+          } else {
+            // Fallback ke next path
+            if (currentPathIndex + 1 >= allPaths.length) {
+              return;
+            }
+            targetPath = allPaths[currentPathIndex + 1];
+          }
+        } else {
+          // Fallback ke next path
+          if (currentPathIndex + 1 >= allPaths.length) {
+            return;
+          }
+          targetPath = allPaths[currentPathIndex + 1];
+        }
+      }
+    } else {
+      // Original chain-based navigation logic
+      if (type === 'next') {
+        // Navigate to next path
+        if (currentPathIndex + 1 >= allPaths.length) {
+          return;
+        }
+        targetPath = allPaths[currentPathIndex + 1];
+      } else {
+        // Navigate to previous path
+        if (currentPathIndex - 1 < 0) {
+          return;
+        }
+        targetPath = allPaths[currentPathIndex - 1];
+      }
+    }
+    
+    // Update path to show target path
+    setPath(targetPath);
 
-  const { outerIndex, innerIndex } = findPathIndex(allMessagesId, edited_id);
-  console.log("the index", { outerIndex, innerIndex });
-  console.log("the all message id", allMessagesId);
-  if (outerIndex === -1 || innerIndex === -1) return;
-  const currentPath = allMessagesId[outerIndex]
-  console.log("the current path", currentPath);
-  if (type === 'next' && innerIndex + 1 < allMessagesId[outerIndex].length) {
-  const index = path.indexOf(message_id);
-  if (index !== -1) {
-    path.splice(index);
+  } catch (error) {
+    console.error("Error in handleChangePath:", error);
   }
-  setPath(prev => [...prev, ...currentPath]);
-}else {
-  const index = path.indexOf(message_id);
-  if (index !== -1) {
-    path.splice(index);
-  }
-  const filtered = currentPath.filter(num => !path.includes(num));
-  setPath(prev => [...prev, ...filtered]);
-}
-
-  console.log("change-path",path)
-  console.log("all-id",allMessagesId)
-
 };
 
 useEffect(() => {
@@ -246,55 +285,84 @@ useEffect(() => {
 }, [path, allMessagesId]);
 
 const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
-  let value_before = null;
-  let edited_from = messageId
-  if (is_edited){
-    const chain = await messageAPI.getChainedMessage(messageId);
-    edited_from = Array.isArray(chain) && chain.length > 0 ? chain.at(-1) // atau chain[chain.length - 1]
-    : messageId;    
-  }
+  // Inline form edit sudah dihandle di MessageList component
+  // Fungsi ini hanya untuk memproses edit yang sudah dikonfirmasi
+  try {
+    let value_before = null;
+    let edited_from = messageId;
+    
+    if (is_edited) {
+      // AMBIL allPaths seperti di handleChangePath untuk mendapatkan data lengkap
+      const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
+      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+        if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
+          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+        }
+        return [];
+      }).filter((path: number[]) => path.length > 0);
+      
+      // AMBIL semua message IDs dari allPaths
+      const allMessageIds = allPaths.flat();
+      const allConversationMessages = await messageAPI.getMessageByIds(allMessageIds);
+      
+      await messageAPI.getChainedMessage(messageId);
+      
+      // GUNAKAN semua messages conversation untuk chain detection (tidak bergantung pada backend chain)
+      edited_from = findLatestMessageInChain(messageId, allConversationMessages);
+    }
+    
     const index_value_before = path.indexOf(messageId);
     value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
 
+    // Hapus message dari path dan chatMessages
+    const index = path.indexOf(messageId);
+    if (index !== -1) {
+      path.splice(index);
+    }
 
-  
-  const index = path.indexOf(messageId);
-  if (index !== -1) {
-    path.splice(index);
-  }
+    const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
+    if (index_chat !== -1) {
+      chatMessages.splice(index_chat);
+    }
 
-  const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
-  if (index_chat !== -1) {
-    chatMessages.splice(index_chat);
-  }
+    if (conversationId === undefined) {
+      console.error("Cannot edit message: conversation isnt found");
+      return;
+    }
 
-  if (conversationId === undefined) {
-    console.error("Cannot edit message: conversation isnt found");
-    return;
-  }
+    // Edit message di backend
     await messageAPI.editMessage(edited_from);
+    
+    // Buat userMessage baru dengan konten yang diedit
     const userMessage: ChatMessage = {
-        content: content,
-        is_user: true,
-        edited_from_message_id: edited_from
-      };
+      content: content,
+      is_user: true,
+      edited_from_message_id: edited_from
+    };
+    
     setChatMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    
     const response = await messageAPI.sendMessage({ 
-          content: userMessage.content,
-          conversation_id: conversationId,
-          is_user: true,
-          is_attach_file: fileUpload.uploadedImages.length > 0,
-          parent_message_id: value_before,
-          edited_from_message_id: edited_from
-        });
+      content: userMessage.content,
+      conversation_id: conversationId,
+      is_user: true,
+      is_attach_file: fileUpload.uploadedImages.length > 0,
+      parent_message_id: value_before,
+      edited_from_message_id: edited_from
+    });
 
-        setChatMessages(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (lastIndex >= 0) {updated[lastIndex] = {
-              ...updated[lastIndex],
-              id: response.reply.message_id_client,};}return updated;});
+    setChatMessages(prev => {
+      const updated = [...prev];
+      const lastIndex = updated.length - 1;
+      if (lastIndex >= 0) {
+        updated[lastIndex] = {
+          ...updated[lastIndex],
+          id: response.reply.message_id_client,
+        };
+      }
+      return updated;
+    });
         setTimeout(() => {
           const aiMessage: ChatMessage = { 
             content: response.reply.message,
@@ -306,10 +374,20 @@ const handleEditMessage = async (messageId: number, content: string, is_edited?:
           setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
           setIsLoading(false);
         }, 1000);
+        
+  } catch (error) {
+    console.error("Error editing message:", error);
+    setIsLoading(false);
+    // Restore original message if edit fails
+    setChatMessages(prev => [...prev, { content, is_user: true, id: messageId }]);
+  }
 }
 
 
 
+  useEffect(() => {
+    // Path updated
+  }, [path]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -339,13 +417,12 @@ async function uploadFiles(files: File[], message_id: number) {
     formData.append("message_id", String(message_id));
 
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/attachments/upload`, formData, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/attachments/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         withCredentials: true, // kalau pakai cookie auth
       });
-      console.log("Uploaded:", res.data);
     } catch (err) {
       console.error("Upload error:", err);
     }
@@ -353,7 +430,6 @@ async function uploadFiles(files: File[], message_id: number) {
 }
 
 const handleDeleteConversation = async (conversationId: string) => {
-  console.log("delete conversation", conversationId);
   try {
     await conversation.deleteConversation(conversationId);
   }
@@ -523,6 +599,7 @@ const handleDeleteConversation = async (conversationId: string) => {
     lastChat,
     path,
     allMessagesId,
+    conversationId,
     
     // File upload
     ...fileUpload,

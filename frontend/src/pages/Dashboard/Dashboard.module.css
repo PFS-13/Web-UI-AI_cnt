@@ -248,30 +248,198 @@
   align-items: flex-end;
 }
 
+
 .aiMessage {
   align-items: flex-start;
+}
+
+.aiMessage .chainControls {
+  align-self: flex-start;
 }
 
 .messageContent {
   max-width: 80%;
   word-wrap: break-word;
   line-height: 1.5;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
+/* User message - chain controls di kanan bawah bubble */
 .userMessage .messageContent {
+  flex-direction: column;
+  position: relative;
+}
+
+.userMessage .messageContent .chainControls {
+  position: absolute !important;
+  right: 0 !important;
+  bottom: -40px !important;
+  left: auto !important;
+}
+
+/* AI message - chain controls di bawah bubble */
+.aiMessage .messageContent {
+  flex-direction: column;
+}
+
+.messageBubble {
   background: #2d2d2d;
   color: white;
   padding: 0.75rem 1rem;
   border-radius: 1.125rem;
   border-bottom-right-radius: 0.25rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+  line-height: 1.5;
 }
 
-.aiMessage .messageContent {
+.userMessage .messageBubble {
+  background: #2d2d2d;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.aiMessage .messageBubble {
+  background: #212121;
+  border-bottom-left-radius: 0.25rem;
+  border-bottom-right-radius: 1.125rem;
+}
+
+.messageContainer {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+/* Inline Edit Form Styles */
+.editForm {
+  background: #2d2d2d;
+  border-radius: 1.125rem;
+  border-bottom-right-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  width: calc(100%);
+  max-width: calc(80% + 50px);
+}
+
+.editTextarea {
+  width: 100%;
   background: transparent;
+  border: none;
   color: white;
-  padding: 0;
-  border-radius: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  min-height: 60px;
+}
+
+.editTextarea::placeholder {
+  color: #9ca3af;
+}
+
+.editButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.cancelEditButton {
+  background: transparent;
+  border: 1px solid #404040;
+  color: #9ca3af;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.cancelEditButton:hover {
+  background: #404040;
+  color: white;
+}
+
+.saveEditButton {
+  background: white;
+  border: none;
+  color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.saveEditButton:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.saveEditButton:disabled {
+  background: #404040;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.controlButton {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 24px;
+  height: 24px;
+}
+
+.controlButton:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.controlButton.disabled {
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.controlButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+
+/* Responsive adjustments for chain controls */
+@media (max-width: 768px) {
+  .chainControls {
+    gap: 0.25rem;
+  }
+  
+  .controlButton {
+    padding: 0.25rem;
+    min-width: 20px;
+    height: 20px;
+  }
+  
+  .controlButton svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .chainIndicator {
+    font-size: 0.75rem;
+    min-width: 28px;
+  }
 }
 
 .messageActions {

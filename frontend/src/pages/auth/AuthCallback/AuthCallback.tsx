@@ -13,7 +13,7 @@ const AuthCallback: React.FC = () => {
         });
 
         if (res.ok) {
-          navigate('/dashboard', { replace: true });
+          navigate('/', { replace: true });
         } else {
           navigate('/login', { replace: true });
         }

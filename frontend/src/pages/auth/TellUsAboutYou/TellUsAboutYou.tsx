@@ -49,7 +49,7 @@ const TellUsAboutYou: React.FC = () => {
     
     try {
       await authAPI.changeUsername(fullName, (await authAPI.getMe()).id);
-      navigate('/dashboard');
+      navigate('/');
       
     } catch (error) {
       console.error('Error saving profile:', error);

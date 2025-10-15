@@ -24,7 +24,6 @@ export const useConversation = (userId?: string): UseConversationReturn => {
 
   const fetchConversations = async () => {
     if (!userId) {
-      console.log('No user ID available, skipping conversation fetch');
       return;
     }
 
