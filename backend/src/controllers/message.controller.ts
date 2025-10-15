@@ -1,9 +1,23 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, Get, Patch,Param,UseGuards, Query, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch,Param,UseInterceptors, Query, HttpCode, BadRequestException, UploadedFile } from '@nestjs/common';
 import { MessageService } from '../services/message.service';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { createMessageDto,  editMessageDto } from 'src/dtos/message.dto';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { AskPayload, createMessageDto,  editMessageDto } from 'src/dtos/message.dto';
 import { UUID } from 'crypto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFilterCallback } from 'multer';
+const MULTER_OPTIONS = {
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit (adjust)
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    const allowed = ['image/png','image/jpeg','image/webp','image/gif','video/mp4','application/pdf','text/plain'];
+    if (!allowed.includes(file.mimetype)) {
+      cb(new BadRequestException('Tipe file tidak didukung'));
+      return;
+    }
+    cb(null, true);
+  }
+};
+
 @ApiTags('Message')
 @Controller('message')
 export class MessageController {
@@ -21,12 +35,20 @@ export class MessageController {
     async getMessageByConversationId(@Param('conversation_id') conversation_id: UUID) {
         return await this.messageService.findByConversationId(conversation_id);
     }
+    
     @ApiOperation({ summary: 'Create a message' })
     @ApiBody({type: createMessageDto})
     @Post('v1/messages/create')
-    async createConversation(@Body() messageDto: createMessageDto) {
-      return await this.messageService.ask(messageDto);
+    @UseInterceptors(FileInterceptor('file', MULTER_OPTIONS))
+    async createConversation(
+      @Body() messageDto: createMessageDto,
+      @UploadedFile() file?: Express.Multer.File,) {
+      const payload: AskPayload = { ...messageDto, file };
+      return await this.messageService.ask(payload);
     }
+
+
+
     @ApiOperation({ summary: 'Get a message by Ids' })
     @ApiBody({type: createMessageDto})
     @Post('v1/messages/get-by-ids')
@@ -48,12 +70,13 @@ export class MessageController {
       return await this.messageService.setEditedId(message_id);
     }
 
-    @ApiOperation({ summary: 'Set message is edited' })
-    @ApiBody({type: createMessageDto})
+    @ApiOperation({ summary: 'Get chained messages path for an edited message' }) // Summary yang bener
+    @ApiParam({ name: 'message_id', type: Number, description: 'ID of the edited message' }) // Pakai ApiParam
     @Get('v1/messages/:message_id/chained-message')
     async getChainedMessage(@Param('message_id') message_id: number) {
       return await this.messageService.findEditedChainPath(message_id);
     }
+
 
     
 

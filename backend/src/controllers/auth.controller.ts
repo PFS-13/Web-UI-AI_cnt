@@ -90,55 +90,78 @@ export class AuthController {
     return { user_id };
   }
 
-  // Login Manual
-  @Post('v1/login')
-  @ApiOperation({ summary: 'Login' })
-  @ApiBody({type : AuthDto})
-  async login(
-    @Body() auth_dto: AuthDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
-  const { access_token, refresh_token } = await this.authService.login(auth_dto);
-    // TODO: change secure to true in production
+    @Post('v1/login')
+  async login(@Body() authDto: AuthDto, @Res({ passthrough: true }) res: Response) {
+    const { access_token, refresh_token } = await this.authService.login(authDto);
+
+    // production: secure: true, sameSite: 'none' if cross-site, set domain/path as needed
     res.cookie('Authentication', access_token, {
       httpOnly: true,
-      secure: false, 
+      secure: false, // change to true in prod (https)
       sameSite: 'lax',
-      maxAge: 120 * 60 * 1000,
+      maxAge: 15 * 60 * 1000, // 15 min
+      path: '/',
     });
 
     res.cookie('Refresh', refresh_token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, 
-  });
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
+      path: '/auth', // optionally limit refresh cookie to /auth endpoints
+    });
+
     return { message: 'Logged in' };
   }
 
   @Post('v1/refresh')
-async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-  const refreshToken = req.cookies['Refresh'];
-  if (!refreshToken) throw new UnauthorizedException('No refresh token');
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshCookie = req.cookies['Refresh'];
+    if (!refreshCookie) throw new UnauthorizedException('No refresh token');
 
-  const { accessToken, newRefreshToken } = await this.authService.refresh(refreshToken);
+    const { accessToken, newRefreshToken } = await this.authService.rotateRefreshToken(refreshCookie);
 
-  res.cookie('Authentication', accessToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 15 * 60 * 1000, 
-  });
-  res.cookie('Refresh', newRefreshToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+    // set new cookies (rotate)
+    res.cookie('Authentication', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
 
-  return { message: 'Token refreshed' };
-}
+    res.cookie('Refresh', newRefreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/auth',
+    });
 
+    return { message: 'Token refreshed' };
+  }
+
+  @Post('v1/logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshCookie = req.cookies['Refresh'];
+    if (refreshCookie) {
+      // try to revoke the specific jti (best effort)
+      try {
+        const payload: any = this.authService['jwtService'].verify(refreshCookie, { secret: process.env.JWT_REFRESH_SECRET });
+        if (payload?.jti) {
+          await this.authService.revokeRefreshTokenByJti(payload.jti);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // clear cookies
+    res.clearCookie('Authentication', { path: '/' });
+    res.clearCookie('Refresh', { path: '/auth' });
+
+    return { message: 'Logged out' };
+  }
 
   // Melakukan verifikasi OTP
   @Patch('v1/verify-otp')
@@ -191,12 +214,6 @@ async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
   }
 
 
-@Post('v1/logout')
-logout(@Res({ passthrough: true }) res: Response) {
-  res.clearCookie('Authentication');
-  res.clearCookie('Refresh');
-  return { message: 'Logged out' };
-}
   
 
 }
