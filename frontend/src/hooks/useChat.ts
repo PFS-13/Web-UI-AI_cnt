@@ -208,6 +208,7 @@ const handleChangePath = async (message_id: number,  type: string, edited_from_m
   console.log("the all message id", allMessagesId);
   if (outerIndex === -1 || innerIndex === -1) return;
   const currentPath = allMessagesId[outerIndex]
+  console.log("the current path", currentPath);
   if (type === 'next' && innerIndex + 1 < allMessagesId[outerIndex].length) {
   const index = path.indexOf(message_id);
   if (index !== -1) {
@@ -227,6 +228,11 @@ const handleChangePath = async (message_id: number,  type: string, edited_from_m
   console.log("all-id",allMessagesId)
 
 };
+
+useEffect(() => {
+  console.log("the all message id updated", allMessagesId);
+  console.log("the path", path);
+}, [path, allMessagesId]);
 
 const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
   let value_before = null;
@@ -293,9 +299,6 @@ const handleEditMessage = async (messageId: number, content: string, is_edited?:
 
 
 
-  useEffect(() => {
-    console.log("the path", path);
-  }, [path]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);

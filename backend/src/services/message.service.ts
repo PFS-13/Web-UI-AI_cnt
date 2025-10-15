@@ -5,6 +5,8 @@ import { In, Repository } from 'typeorm';
 import { AskPayload, createMessageDto } from '../dtos/message.dto';
 import { Message } from '../entity/message.entity';
 import { ConversationService } from './conversation.service';
+import { CircuitBreaker } from '../utils/CircuitBreaker';
+import { Semaphore } from '../utils/semaphore';
 // Gemini SDK
 import { GoogleGenAI } from '@google/genai';
 import { UUID } from 'crypto';
@@ -12,6 +14,9 @@ import { UUID } from 'crypto';
 export class MessageService {
   private readonly logger = new Logger(MessageService.name);
   private readonly modelName = 'gemini-2.5-flash';
+  private readonly modelSemaphore = new Semaphore(3); // max 3 paralel
+  private readonly modelCircuit = new CircuitBreaker(5, 1500); // 5 failures, 1.5s recovery
+
   private aiClient: GoogleGenAI;
   
   constructor(
@@ -19,6 +24,7 @@ export class MessageService {
 
     private readonly messageRepo: Repository<Message>,
     private readonly conversationService: ConversationService,
+    
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -29,60 +35,159 @@ export class MessageService {
     this.aiClient = new GoogleGenAI({ apiKey });
   }
   
-  // --- helper retry wrapper (simple exponential backoff)
-  private async _withRetries<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 300) : Promise<T> {
-    let lastErr: any = null;
-    for (let i = 0; i < attempts; i++) {
-      try {
-        return await fn();
-      } catch (e) {
-        lastErr = e;
-        const delay = baseDelayMs * Math.pow(2, i);
-        this.logger.warn(`Attempt ${i + 1} failed: ${e?.message ?? e}. Retrying after ${delay}ms.`);
-        await new Promise(r => setTimeout(r, delay));
+private _isRetryableError(e: any): boolean {
+  if (!e) return true;
+  const status = e?.status || e?.error?.code || e?.code;
+  const code = e?.code || e?.name || '';
+
+  // network-ish errors
+  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'ENETDOWN', 'ERR_CONNECTION_RESET', 'ERR_ABORTED'].includes(code)) return true;
+  if (code === 'AbortError') return true;
+
+  // 5xx => retry
+  if (typeof status === 'number' && status >= 500) return true;
+  // 429 => retry
+  if (status === 429) return true;
+  // 4xx except 429 are usually client errors -> don't retry
+  if (typeof status === 'number' && status >= 400 && status < 500) return false;
+  // otherwise best-effort retry
+  return true;
+}
+
+private _parseRetryAfterMs(e: any): number | null {
+  // check common places:
+  const hdr = e?.headers?.['retry-after'] ?? e?.error?.headers?.['retry-after'] ?? e?.headers?.get?.('retry-after');
+  if (!hdr) return null;
+  const secs = parseInt(String(hdr));
+  if (!isNaN(secs)) return secs * 1000;
+  // maybe HTTP date
+  const date = Date.parse(String(hdr));
+  if (!isNaN(date)) return Math.max(0, date - Date.now());
+  return null;
+}
+
+private async _sleep(ms: number) {
+  return new Promise(res => setTimeout(res, ms));
+}
+
+private async _withRetries<T>(fn: () => Promise<T>, attempts = 5, baseDelayMs = 300): Promise<T> {
+  let lastErr: any = null;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fn();
+      // success => record success once (defensive)
+      try { this.modelCircuit?.recordSuccess(); } catch {}
+      return res;
+    } catch (e: any) {
+      lastErr = e;
+
+      // if circuit open -> short-circuit immediately
+      if (this.modelCircuit?.isOpen()) {
+        const wait = this.modelCircuit.timeUntilResetMs();
+        this.logger.warn(`Circuit open (skipping call). Time until reset: ${wait}ms`);
+        throw new Error('AI provider temporarily unavailable (circuit open)');
       }
+
+      // non-retryable -> record failure and rethrow immediately
+      if (!this._isRetryableError(e)) {
+        try { this.modelCircuit?.recordFailure(); } catch {}
+        this.logger.debug('Non-retryable error from AI provider: ' + (e?.message ?? JSON.stringify(e)));
+        throw e;
+      }
+
+      // If this was last attempt, record failure and throw
+      if (i === attempts - 1) {
+        try { this.modelCircuit?.recordFailure(); } catch {}
+        this.logger.warn(`All ${attempts} attempts failed: ${e?.message ?? String(e)}`);
+        throw e;
+      }
+
+      // Otherwise compute backoff with jitter and try again (do not record failure yet)
+      const retryAfterMs = this._parseRetryAfterMs(e);
+      const expDelay = retryAfterMs ?? (baseDelayMs * Math.pow(2, i));
+      const jitter = Math.floor(Math.random() * Math.min(1000, expDelay));
+      const delay = expDelay + jitter;
+
+      this.logger.warn(`Attempt ${i + 1} failed: ${(e?.message ?? JSON.stringify(e))}. Retrying after ${delay}ms.`);
+      await this._sleep(delay);
+      // continue loop (do not record failure into circuit until final)
     }
-    throw lastErr;
   }
 
-  // Robust call model adapter
-  private async _callModelRaw(prompt: string, temp = 0.25, maxTokens = 512): Promise<string> {
-    if (!this.aiClient) throw new Error('AI client not initialized');
-    try {
-      const call = async () => {
-        const resp = await this.aiClient.models.generateContent({
+  // after exhausted attempts, throw last error (should not reach because we throw inside)
+  throw lastErr;
+}
+
+// --- wrapper to call model with timeout + optional AbortController support ---
+private async _callModelRaw(prompt: string, temp = 0.25, maxTokens = 512, timeoutMs = 15_000): Promise<string> {
+  if (!this.aiClient) throw new Error('AI client not initialized');
+  if (this.modelCircuit?.isOpen()) throw new Error('AI provider temporarily unavailable (circuit open)');
+
+  // shorten prompt if too long (extra defense)
+  const safePrompt = typeof prompt === 'string' && prompt.length > 50_000 ? prompt.slice(-50_000) : prompt;
+
+  // Acquire concurrency slot
+  await this.modelSemaphore.acquire();
+  try {
+    const callOnce = async () => {
+      // Promise that calls SDK — try to use AbortController if SDK supports passing signal
+      const callSdk = async (signal?: AbortSignal) => {
+        // If SDK accepts signal, pass it; else ignore
+        const params: any = {
           model: this.modelName,
-          // keep prompt as contents but if SDK requires array -> adapt here
-          contents: prompt,
+          contents: safePrompt, // if SDK expects messaging shape, adapt accordingly
           config: { temperature: temp, maxOutputTokens: maxTokens },
-        });
-
-        // Log only metadata; DO NOT log full text (avoid leaking PII)
-        try {
-          const meta = {
-            model: this.modelName,
-            // if resp has status / usage fields, include them
-            candidateCount: (resp as any)?.candidates?.length ?? ((resp as any)?.candidateCount ?? null),
-          };
-          this.logger.debug(`Gemini response meta: ${JSON.stringify(meta)}`);
-        } catch (e) {
-          // ignore logging error
-        }
-
-        // extract text robustly
-        let assistantText = '';
-        if (typeof (resp as any).text === 'string') assistantText = (resp as any).text;
-        else assistantText = this._extractTextFromResp(resp);
-        return assistantText ?? '';
+        };
+        if (signal) params.signal = signal;
+        const resp: any = await (this.aiClient.models as any).generateContent(params);
+        return resp;
       };
 
-      // use retries for transient errors
-      return await this._withRetries(call, 3, 400);
-    } catch (e: any) {
-      this.logger.error('Gemini call failed inside _callModelRaw: ' + (e?.message ?? e));
-      throw e;
-    }
+      // Prefer AbortController if supported
+      if (typeof AbortController !== 'undefined') {
+        const controller = new AbortController();
+        const to = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const resp = await callSdk(controller.signal);
+          clearTimeout(to);
+          // success -> record success in circuit breaker
+          this.modelCircuit?.recordSuccess();
+          return resp;
+        } catch (e) {
+          clearTimeout(to);
+          throw e;
+        }
+      } else {
+        // fallback Promise.race timeout
+        return await Promise.race([
+          callSdk(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('AI request timeout')), timeoutMs)),
+        ]);
+      }
+    };
+
+    // Use retries wrapper (handles jitter/backoff & circuit state)
+    const resp = await this._withRetries(callOnce, 5, 300);
+    // Log metadata only (avoid PII)
+    try {
+      const meta = {
+        model: this.modelName,
+        // maybe resp.usage etc.
+        candidateCount: (resp as any)?.candidates?.length ?? null,
+      };
+      this.logger.debug(`Gemini response meta: ${JSON.stringify(meta)}`);
+    } catch {}
+    // extract text as before
+    let assistantText = '';
+    if (typeof (resp as any).text === 'string') assistantText = (resp as any).text;
+    else assistantText = this._extractTextFromResp(resp);
+    return assistantText ?? '';
+  } finally {
+    this.modelSemaphore.release();
   }
+}
+
 
   // --- method baru: ekstrak konteks & log ke logger (sanitized)
   private async extractContextAndConsoleLog(message: Message) {
