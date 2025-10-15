@@ -29,41 +29,41 @@ export class createMessageDto {
   @IsNotEmpty()
   content: string;
 
-  @ApiProperty({ 
-    description: 'True if the user sends the message, false if it’s an AI response', 
-    example: true 
-  })
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  is_user: boolean;
+  // @ApiProperty({ 
+  //   description: 'True if the user sends the message, false if it’s an AI response', 
+  //   example: true 
+  // })
+  // @Transform(({ value }) => value === 'true' || value === true)
+  // @IsBoolean()
+  // is_user: boolean;
 
-  @ApiProperty({ 
-    description: 'True if the message has an attached file, false if not', 
-    example: false 
-  })
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  is_attach_file: boolean;
+  // @ApiProperty({ 
+  //   description: 'True if the message has an attached file, false if not', 
+  //   example: false 
+  // })
+  // @Transform(({ value }) => value === 'true' || value === true)
+  // @IsBoolean()
+  // is_attach_file: boolean;
 
-  @ApiProperty({ 
-    description: 'ID of the message this one was edited from', 
-    example: 42, 
-    required: false 
-  })
-  @Transform(({ value }) => value ? Number(value) : undefined)
-  @IsOptional()
-  @IsNumber()
-  edited_from_message_id?: number;
+  // @ApiProperty({ 
+  //   description: 'ID of the message this one was edited from', 
+  //   example: 42, 
+  //   required: false 
+  // })
+  // @Transform(({ value }) => value ? Number(value) : undefined)
+  // @IsOptional()
+  // @IsNumber()
+  // edited_from_message_id?: number;
 
-  @ApiProperty({ 
-    description: 'ID of the message this one is replying to', 
-    example: 15, 
-    required: false 
-  })
-  @Transform(({ value }) => value ? Number(value) : undefined)
-  @IsOptional()
-  @IsNumber()
-  parent_message_id?: number;
+  // @ApiProperty({ 
+  //   description: 'ID of the message this one is replying to', 
+  //   example: 15, 
+  //   required: false 
+  // })
+  // @Transform(({ value }) => value ? Number(value) : undefined)
+  // @IsOptional()
+  // @IsNumber()
+  // parent_message_id?: number;
 }
 
   export type AskPayload = createMessageDto & { file?: Express.Multer.File };

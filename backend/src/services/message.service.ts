@@ -5,559 +5,115 @@ import { In, Repository } from 'typeorm';
 import { AskPayload, createMessageDto } from '../dtos/message.dto';
 import { Message } from '../entity/message.entity';
 import { ConversationService } from './conversation.service';
-import { CircuitBreaker } from '../utils/CircuitBreaker';
-import { Semaphore } from '../utils/semaphore';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+
 // Gemini SDK
-import { GoogleGenAI } from '@google/genai';
 import { UUID } from 'crypto';
+import { UsersService } from './user.service';
 @Injectable()
 export class MessageService {
-  private readonly logger = new Logger(MessageService.name);
-  private readonly modelName = 'gemini-2.5-flash';
-  private readonly modelSemaphore = new Semaphore(3); // max 3 paralel
-  private readonly modelCircuit = new CircuitBreaker(5, 1500); // 5 failures, 1.5s recovery
+  private readonly CHATBOT_URL = 'https://otto.cinte.id/webhook/y-chat';
 
-  private aiClient: GoogleGenAI;
-  
   constructor(
     @InjectRepository(Message)
-
     private readonly messageRepo: Repository<Message>,
     private readonly conversationService: ConversationService,
-    
-  ) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      // Fail fast: jangan pakai hard-coded fallback secret
-      this.logger.error('GEMINI_API_KEY is not set. Aborting AI client init.');
-      throw new InternalServerErrorException('AI provider not configured');
-    }
-    this.aiClient = new GoogleGenAI({ apiKey });
-  }
+    private readonly httpService: HttpService
+  ) {}
   
-private _isRetryableError(e: any): boolean {
-  if (!e) return true;
-  const status = e?.status || e?.error?.code || e?.code;
-  const code = e?.code || e?.name || '';
-
-  // network-ish errors
-  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'ENETDOWN', 'ERR_CONNECTION_RESET', 'ERR_ABORTED'].includes(code)) return true;
-  if (code === 'AbortError') return true;
-
-  // 5xx => retry
-  if (typeof status === 'number' && status >= 500) return true;
-  // 429 => retry
-  if (status === 429) return true;
-  // 4xx except 429 are usually client errors -> don't retry
-  if (typeof status === 'number' && status >= 400 && status < 500) return false;
-  // otherwise best-effort retry
-  return true;
-}
-
-private _parseRetryAfterMs(e: any): number | null {
-  // check common places:
-  const hdr = e?.headers?.['retry-after'] ?? e?.error?.headers?.['retry-after'] ?? e?.headers?.get?.('retry-after');
-  if (!hdr) return null;
-  const secs = parseInt(String(hdr));
-  if (!isNaN(secs)) return secs * 1000;
-  // maybe HTTP date
-  const date = Date.parse(String(hdr));
-  if (!isNaN(date)) return Math.max(0, date - Date.now());
-  return null;
-}
-
-private async _sleep(ms: number) {
-  return new Promise(res => setTimeout(res, ms));
-}
-
-private async _withRetries<T>(fn: () => Promise<T>, attempts = 5, baseDelayMs = 300): Promise<T> {
-  let lastErr: any = null;
-
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fn();
-      // success => record success once (defensive)
-      try { this.modelCircuit?.recordSuccess(); } catch {}
-      return res;
-    } catch (e: any) {
-      lastErr = e;
-
-      // if circuit open -> short-circuit immediately
-      if (this.modelCircuit?.isOpen()) {
-        const wait = this.modelCircuit.timeUntilResetMs();
-        this.logger.warn(`Circuit open (skipping call). Time until reset: ${wait}ms`);
-        throw new Error('AI provider temporarily unavailable (circuit open)');
-      }
-
-      // non-retryable -> record failure and rethrow immediately
-      if (!this._isRetryableError(e)) {
-        try { this.modelCircuit?.recordFailure(); } catch {}
-        this.logger.debug('Non-retryable error from AI provider: ' + (e?.message ?? JSON.stringify(e)));
-        throw e;
-      }
-
-      // If this was last attempt, record failure and throw
-      if (i === attempts - 1) {
-        try { this.modelCircuit?.recordFailure(); } catch {}
-        this.logger.warn(`All ${attempts} attempts failed: ${e?.message ?? String(e)}`);
-        throw e;
-      }
-
-      // Otherwise compute backoff with jitter and try again (do not record failure yet)
-      const retryAfterMs = this._parseRetryAfterMs(e);
-      const expDelay = retryAfterMs ?? (baseDelayMs * Math.pow(2, i));
-      const jitter = Math.floor(Math.random() * Math.min(1000, expDelay));
-      const delay = expDelay + jitter;
-
-      this.logger.warn(`Attempt ${i + 1} failed: ${(e?.message ?? JSON.stringify(e))}. Retrying after ${delay}ms.`);
-      await this._sleep(delay);
-      // continue loop (do not record failure into circuit until final)
-    }
-  }
-
-  // after exhausted attempts, throw last error (should not reach because we throw inside)
-  throw lastErr;
-}
-
-// --- wrapper to call model with timeout + optional AbortController support ---
-private async _callModelRaw(prompt: string, temp = 0.25, maxTokens = 512, timeoutMs = 15_000): Promise<string> {
-  if (!this.aiClient) throw new Error('AI client not initialized');
-  if (this.modelCircuit?.isOpen()) throw new Error('AI provider temporarily unavailable (circuit open)');
-
-  // shorten prompt if too long (extra defense)
-  const safePrompt = typeof prompt === 'string' && prompt.length > 50_000 ? prompt.slice(-50_000) : prompt;
-
-  // Acquire concurrency slot
-  await this.modelSemaphore.acquire();
-  try {
-    const callOnce = async () => {
-      // Promise that calls SDK — try to use AbortController if SDK supports passing signal
-      const callSdk = async (signal?: AbortSignal) => {
-        // If SDK accepts signal, pass it; else ignore
-        const params: any = {
-          model: this.modelName,
-          contents: safePrompt, // if SDK expects messaging shape, adapt accordingly
-          config: { temperature: temp, maxOutputTokens: maxTokens },
-        };
-        if (signal) params.signal = signal;
-        const resp: any = await (this.aiClient.models as any).generateContent(params);
-        return resp;
-      };
-
-      // Prefer AbortController if supported
-      if (typeof AbortController !== 'undefined') {
-        const controller = new AbortController();
-        const to = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const resp = await callSdk(controller.signal);
-          clearTimeout(to);
-          // success -> record success in circuit breaker
-          this.modelCircuit?.recordSuccess();
-          return resp;
-        } catch (e) {
-          clearTimeout(to);
-          throw e;
-        }
-      } else {
-        // fallback Promise.race timeout
-        return await Promise.race([
-          callSdk(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('AI request timeout')), timeoutMs)),
-        ]);
-      }
-    };
-
-    // Use retries wrapper (handles jitter/backoff & circuit state)
-    const resp = await this._withRetries(callOnce, 5, 300);
-    // Log metadata only (avoid PII)
-    try {
-      const meta = {
-        model: this.modelName,
-        // maybe resp.usage etc.
-        candidateCount: (resp as any)?.candidates?.length ?? null,
-      };
-      this.logger.debug(`Gemini response meta: ${JSON.stringify(meta)}`);
-    } catch {}
-    // extract text as before
-    let assistantText = '';
-    if (typeof (resp as any).text === 'string') assistantText = (resp as any).text;
-    else assistantText = this._extractTextFromResp(resp);
-    return assistantText ?? '';
-  } finally {
-    this.modelSemaphore.release();
-  }
-}
-
-
   // --- method baru: ekstrak konteks & log ke logger (sanitized)
-  private async extractContextAndConsoleLog(message: Message) {
-  const prompt = `
-  You are an assistant that generates a suitable conversation title in Indonesian based on the user's chat message.
-  Output MUST be valid JSON and ONLY JSON (no extra commentary).
-  Schema:
-  {
-    "title": "<judul percakapan singkat, ringkas, alami, dan relevan dengan isi pesan, maksimal 10 kata>"
-  }
-  User message:
-  """${message.content}"""
-  Please produce ONLY the JSON output.
-  `;
+//   private async extractContextAndConsoleLog(message: Message) {
+//   const prompt = `
+//   You are an assistant that generates a suitable conversation title in Indonesian based on the user's chat message.
+//   Output MUST be valid JSON and ONLY JSON (no extra commentary).
+//   Schema:
+//   {
+//     "title": "<judul percakapan singkat, ringkas, alami, dan relevan dengan isi pesan, maksimal 10 kata>"
+//   }
+//   User message:
+//   """${message.content}"""
+//   Please produce ONLY the JSON output.
+//   `;
 
-  let contextJson: any = null;
+//   let contextJson: any = null;
 
-  try {
-    const raw = await this._callModelRaw(prompt, 0.0, 200);
-    const jsonText = this._extractJsonFromText(raw);
-    contextJson = JSON.parse(jsonText);
+//   try {
+//     const raw = await this._callModelRaw(prompt, 0.0, 200);
+//     const jsonText = this._extractJsonFromText(raw);
+//     contextJson = JSON.parse(jsonText);
 
-    // 🔹 Tambahkan fallback jika tidak ada "title"
-    if (!contextJson.title || contextJson.title.trim() === '') {
-      contextJson.title = this._shortSummary(message.content) || 'new chat';
-    }
-  } catch (e) {
-    this.logger.warn('Failed to extract structured context via model, using local fallback: ' + (e?.message ?? e));
-    contextJson = {
-      title: this._shortSummary(message.content) || 'new chat',
-    };
-  }
+//     // 🔹 Tambahkan fallback jika tidak ada "title"
+//     if (!contextJson.title || contextJson.title.trim() === '') {
+//       contextJson.title = this._shortSummary(message.content) || 'new chat';
+//     }
+//   } catch (e) {
+//     this.logger.warn('Failed to extract structured context via model, using local fallback: ' + (e?.message ?? e));
+//     contextJson = {
+//       title: this._shortSummary(message.content) || 'new chat',
+//     };
+//   }
 
-  // 🔹 Pastikan tetap ada fallback terakhir
-  if (!contextJson.title || contextJson.title.trim() === '') {
-    contextJson.title = 'new chat';
-  }
+//   // 🔹 Pastikan tetap ada fallback terakhir
+//   if (!contextJson.title || contextJson.title.trim() === '') {
+//     contextJson.title = 'new chat';
+//   }
 
-  try {
-    await this.conversationService.edit(message.conversation_id, contextJson.title);
-  } catch (e) {
-    this.logger.error('Failed to change conversation title ' + (e?.message ?? e));
-  }
+//   try {
+//     await this.conversationService.edit(message.conversation_id, contextJson.title);
+//   } catch (e) {
+//     this.logger.error('Failed to change conversation title ' + (e?.message ?? e));
+//   }
 
-  return contextJson;
-}
+//   return contextJson;
+// }
 
 async isConversationNew(conversation_id: UUID): Promise<{ isNew: boolean, count: number }> {
   const count = await this.messageRepo.count({ where: { conversation_id } });
   return { isNew: count === 0 , count};
 }
 
-// --- NEW helpers to add inside MessageService class ---
-
-/**
- * Sanitize and truncate text to safely put into prompt.
- */
-private _sanitizeForPrompt(s: string | undefined, maxLen = 1200): string {
-  if (!s) return '';
-  let safe = String(s);
-  // remove control chars, collapse whitespace
-  safe = safe.replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim();
-  // break code fences/triple quotes to avoid prompt injection boundaries
-  safe = safe.replace(/```/g, '` ` `').replace(/"""/g, '"\'\'');
-  if (safe.length > maxLen) safe = safe.slice(0, maxLen) + '...';
-  return safe;
-}
-
-/**
- * Send a multimodal request that includes an inline base64 file + text prompt.
- * Returns assistant text extracted from response.
- *
- * NOTE: adjust the payload shape inside generateContent(...) to match your SDK version.
- */
-private async _callModelWithFile(opts: {
-  systemInstruction: string;
-  userText: string;
-  fileBuffer: Buffer;
-  fileMime: string;
-  fileName?: string;
-  temp?: number;
-  maxTokens?: number;
-}): Promise<string> {
-  const { systemInstruction, userText, fileBuffer, fileMime, fileName, temp = 0.2, maxTokens = 512 } = opts;
-
-  const MAX_INLINE_BYTES = 20 * 1024 * 1024; // konservatif
-  if (fileBuffer.length > MAX_INLINE_BYTES) {
-    throw new Error('File terlalu besar untuk dikirim inline; gunakan File Upload API.');
-  }
-
-  // Convert to base64 (no "data:" prefix)
-  const b64 = fileBuffer.toString('base64');
-
-  // Build contents in the JS SDK shape shown in official docs:
-  // [ { inlineData: { mimeType, data } }, { text: "..." } ]
-  const contents: any[] = [
-    {
-      inlineData: {
-        mimeType: fileMime,
-        data: b64,
-        filename: fileName ?? 'upload',
-      },
-    },
-    {
-      text: `${systemInstruction}\n\nPesan pengguna (opsional): ${userText || '(tidak ada pesan teks)'}\n\nTugas: Gunakan FILE terlampir sebagai sumber utama. Pertama berikan ringkasan singkat dari file (1-2 kalimat). Lalu jawab permintaan pengguna jika ada. Jika pengguna tidak memberi pesan, sarankan 2 pertanyaan tindak lanjut yang relevan. Jawab dalam Bahasa Indonesia, singkat dan jelas.`,
-    },
-  ];
-
-  // DEBUG — log structure but omit base64 content
-  try {
-    this.logger.debug(
-      'Prepared contents for generateContent (shape): ' +
-        JSON.stringify(contents, (k, v) => (k === 'data' ? '<BASE64_OMITTED>' : v))
-    );
-  } catch {
-    // ignore stringify errors
-  }
-
-  const sdkCall = async () => {
-    // Use any cast to avoid type friction with differing SDK typings.
-    const resp: any = await (this.aiClient.models as any).generateContent({
-      model: this.modelName,
-      contents,
-      config: { temperature: temp, maxOutputTokens: maxTokens },
-    });
-    return resp;
-  };
-
-  try {
-    const resp = await this._withRetries(sdkCall, 3, 500);
-    const extracted = this._extractTextFromResp(resp);
-    return extracted ?? '';
-  } catch (e: any) {
-    // Log full error message (stringified) for debugging — but DO NOT log base64.
-    this.logger.error('Gemini multimodal call failed: ' + (e?.message ?? JSON.stringify(e)));
-    throw e;
-  }
-}
 
 
-
-// --- REPLACEMENT: ask method (paste in place of your old ask) ---
 async ask(payload: AskPayload) {
   const { file, ...dto } = payload;
   const { isNew, count } = await this.isConversationNew(dto.conversation_id);
-  console.log("file uploaded", file);
-  // create/save user message (store metadata only; don't store binary)
-  const userMsg = this.messageRepo.create(dto);
-  await this.messageRepo.save(userMsg);
+  try {
+      const payload: any = {
+        sessionId: dto.conversation_id,
+        userId: "85d0c984-df35-474c-9207-85d363b42500",
+        action: 'sendMessage',
+        chatInput: dto.content,
+      };
 
-  this.logger.debug('Is conversation new? ' + isNew + ' (message count=' + count + ')');
+      console.log('Payload to chatbot:', payload);
 
-  if (isNew) {
-    try {
-      // attempt to extract title/context (your existing method)
-      await this.extractContextAndConsoleLog(userMsg);
-    } catch (e: any) {
-      this.logger.error('Failed during context extraction/logging: ' + (e?.message ?? e));
+      const response = await firstValueFrom(
+        this.httpService.post(this.CHATBOT_URL, payload, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      
+      console.log('🟢 Chatbot raw response:', response.status, response.statusText);
+
+      console.log('Response from chatbot:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('Error sending message to chatbot:', error.message);
+
     }
-  }
 
-  this.conversationService.updatedTimestamp(dto.conversation_id).catch((e: any) => {
-    this.logger.error('Failed to update conversation timestamp: ' + (e?.message ?? e));
-  });
-
-  // ambil history (recent) - ambil fields yang dibutuhkan saja
-  const recent = await this.messageRepo.find({
-    where: { conversation_id: dto.conversation_id },
-    order: { created_at: 'DESC' },
-    take: 100,
-    select: ['id', 'content', 'is_user', 'created_at'],
-  });
-  const historyEntitiesAll = recent.reverse();
-
-  const historyEntities = historyEntitiesAll.filter(h => {
-    if (!h.content) return false;
-    const low = h.content.trim().toLowerCase();
-    if (low.startsWith('(fallback') || low.includes('(fallback gemini)')) return false;
-    return true;
-  });
-
-  const lastContext = historyEntities.slice(-10).map(h => ({
-    role: h.is_user ? 'user' : 'assistant',
-    text: h.content,
-    created_at: h.created_at,
-  }));
-
-  const systemInstruction = `Kamu adalah asisten yang membantu. Jawab singkat dan jelas dalam bahasa Indonesia kecuali diminta lain. Jika ada file terlampir, gunakan file itu sebagai sumber utama.`;
-
-  const contextParts = lastContext
-    .map(item => `${item.role === 'user' ? 'User' : 'Assistant'}: ${item.text}`)
-    .join('\n');
-
-  // sanitize user text (may be undefined/empty)
-  const safeUserText = this._sanitizeForPrompt((dto as any).content);
-
-  // Build prompt base for text-only flow (used when no file is present)
-  const promptBase = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${safeUserText}\n\nAssistant:`;
-
-  this.logger.debug(`Prompt length=${promptBase.length} for conversation=${dto.conversation_id}`);
-
-  // function wrapper to call text-only model
-  const callModelTextOnly = async (prompt: string, temp = 0.25) => {
-    return await this._callModelRaw(prompt, temp, 512);
-  };
-
-  let assistantText = '';
-
-  // === FLOW: file present => multimodal call; otherwise text-only flow ===
-  if (file && file.buffer) {
-    try {
-      this.logger.debug(`Sending inline file to model (mime=${file.mimetype}, size=${file.size})`);
-      assistantText = await this._callModelWithFile({
-        systemInstruction,
-        userText: safeUserText,
-        fileBuffer: file.buffer,
-        fileMime: file.mimetype,
-        fileName: file.originalname,
-        temp: 0.2,
-        maxTokens: 512,
-      });
-
-      if (!assistantText || assistantText.trim().length === 0) {
-        this.logger.warn('Empty response from Gemini (file flow), retrying with higher temp');
-        assistantText = await this._callModelWithFile({
-          systemInstruction,
-          userText: safeUserText,
-          fileBuffer: file.buffer,
-          fileMime: file.mimetype,
-          fileName: file.originalname,
-          temp: 0.6,
-          maxTokens: 512,
-        });
-      }
-    } catch (e: any) {
-      this.logger.error('Model (file) failed to produce a reply: ' + (e?.message ?? e));
-      assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban dari file. Coba ulangi atau kirim file yang lebih kecil.)';
-    }
-  } else {
-    // text-only existing flow
-    try {
-      assistantText = await callModelTextOnly(promptBase, 0.2);
-      if (!assistantText || assistantText.trim().length === 0) {
-        this.logger.warn('Empty response from Gemini on first try, retrying with higher temp');
-        assistantText = await callModelTextOnly(promptBase, 0.6);
-      }
-    } catch (e: any) {
-      this.logger.error('Model failed to produce a reply: ' + (e?.message ?? e));
-      assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
-    }
-  }
-
-  // similarity check with last assistant reply (same as before)
-  const lastAssistant = historyEntities.slice().reverse().find(h => !h.is_user);
-  if (lastAssistant && lastAssistant.content) {
-    const sim = this._similarityJaccard(lastAssistant.content, assistantText);
-    this.logger.debug(`Similarity with last assistant reply = ${sim}`);
-    const SIMILARITY_THRESHOLD = 0.75;
-    if (sim >= SIMILARITY_THRESHOLD) {
-      this.logger.log('Answer too similar to previous assistant reply — regenerating with stronger instruction');
-      const promptRetry = `${systemInstruction}\n\nContext (recent):\n${contextParts}\n\n=== PESAN BARU ===\n${safeUserText}\n\nAssistant: Berikan jawaban yang berbeda dari respons assistant sebelumnya. Tambahkan contoh atau langkah konkret. Singkat.`;
-      try {
-        let retryText = '';
-        if (file && file.buffer) {
-          retryText = await this._callModelWithFile({
-            systemInstruction,
-            userText: safeUserText,
-            fileBuffer: file.buffer,
-            fileMime: file.mimetype,
-            fileName: file.originalname,
-            temp: 0.7,
-            maxTokens: 512,
-          });
-        } else {
-          retryText = await callModelTextOnly(promptRetry, 0.7);
-        }
-
-        if (retryText && retryText.trim().length > 0) {
-          const simRetry = this._similarityJaccard(lastAssistant.content, retryText);
-          this.logger.debug(`Similarity after retry = ${simRetry}`);
-          if (simRetry < sim) assistantText = retryText;
-        }
-      } catch (e: any) {
-        this.logger.warn('Retry generation failed: ' + (e?.message ?? e));
-      }
-    }
-  }
-
-  if (!assistantText || assistantText.trim().length === 0) {
-    assistantText = '(Maaf, terjadi kesalahan saat mengambil jawaban. Coba ulangi permintaan Anda.)';
-  }
-
-  // Save assistant message; mark is_attach_file true jika ada file
-  const assistantMsg = this.messageRepo.create({
-    conversation_id: dto.conversation_id,
-    content: assistantText,
-    is_user: false,
-    is_attach_file: !!file,
-    parent_message_id: userMsg.id,
-  });
-  await this.messageRepo.save(assistantMsg);
-
-  return {
-    reply: {
-      message_id_server: assistantMsg.id,
-      message: assistantText,
-      message_id_client: userMsg.id,
-    },
-  };
+  // return {
+  //   reply: {
+  //     message_id_server: assistantMsg.id,
+  //     message: assistantText,
+  //     message_id_client: userMsg.id,
+  //   },
+  // };
 }
 
 
-
-  private _similarityJaccard(a: string, b: string): number {
-    if (!a || !b) return 0;
-    const norm = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .split(/\s+/)
-        .filter(Boolean);
-    const A = new Set(norm(a));
-    const B = new Set(norm(b));
-    if (A.size === 0 || B.size === 0) return 0;
-    let inter = 0;
-    for (const x of A) if (B.has(x)) inter++;
-    const uni = new Set([...A, ...B]).size;
-    return uni === 0 ? 0 : inter / uni;
-  }
-
-  private _extractTextFromResp(resp: any): string {
-    try {
-      const cand = resp?.candidates?.[0];
-      const partText = cand?.content?.parts?.[0]?.text;
-      if (partText) return partText;
-      if (resp?.candidates?.length) return resp.candidates.map((c: any) => c?.content?.parts?.map((p: any) => p?.text ?? '').join('')).join('\n');
-      return resp?.text ?? '';
-    } catch (e) {
-      return resp?.text ?? '';
-    }
-  }
-
-  // Robust extraction of JSON inside text:
-  private _extractJsonFromText(text: string): string {
-    if (!text) throw new Error('Empty text');
-    // 1) try to find code fence JSON ```json { ... } ```
-    const fenceMatch = text.match(/```(?:json)?\s*({[\s\S]*})\s*```/i);
-    if (fenceMatch && fenceMatch[1]) return fenceMatch[1];
-
-    // 2) try to find first { ... } pair (naive but improved)
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-      throw new Error('JSON not found in model response');
-    }
-    const candidate = text.slice(firstBrace, lastBrace + 1);
-    // quick sanity check
-    try {
-      JSON.parse(candidate);
-      return candidate;
-    } catch (e) {
-      throw new Error('Found candidate JSON but failed to parse');
-    }
-  }
-
-  private _shortSummary(text: string) {
-    const trimmed = text.trim();
-    if (trimmed.length <= 120) return trimmed;
-    return trimmed.slice(0, 117).trim() + '...';
-  }
 
   async findPathByConversationId(conversation_id: UUID): Promise<any[]> {
   const sql = `

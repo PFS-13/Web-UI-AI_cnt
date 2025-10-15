@@ -24,7 +24,9 @@ export class ConversationService {
     }
     return await this.conversationsRepository.findOne({ where: { user_id } });
   }
-
+  async findOwnerConversation(conversation_id: UUID): Promise<Conversation | null> {
+    return await this.conversationsRepository.findOne({ select: { user_id: true }, where: { conversation_id } });
+  }
   async findAllByUserId(user_id: UUID): Promise<Conversation[]> {
     return await this.conversationsRepository.find({ where: { user_id }, order: { last_updated: 'DESC' } });
   }

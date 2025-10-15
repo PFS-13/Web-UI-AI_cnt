@@ -21,9 +21,7 @@ import { AttachedMessageModule } from './modules/attached.module';
       // database: process.env.POSTGRES_DB,
       synchronize: false,
       autoLoadEntities: true,
-      ssl: process.env.NODE_ENV === 'production' ? {
-        rejectUnauthorized: false,
-      } : false,
+      ssl: false,
       logging: false,
     }),
     AuthModule,
