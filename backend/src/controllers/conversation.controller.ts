@@ -32,6 +32,12 @@ export class ConversationController {
       return await this.conversationService.share(conversation_id, path);
     }
 
+    @ApiOperation({ summary: 'Get shared url for conversation' })
+    @Get('v1/conversations/:shared_url/get-share-url')
+    async getSharedConversation(@Param('shared_url') shared_url: UUID) {
+      return await this.conversationService.getShared(shared_url);
+    }
+
     @ApiOperation({ summary: 'Edit title of Conversation' })
     @Patch('v1/conversations/:conversation_id/edit')
     async edit(@Param('conversation_id') conversation_id: UUID, title:string ) {

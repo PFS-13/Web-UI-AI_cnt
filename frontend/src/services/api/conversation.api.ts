@@ -69,6 +69,11 @@ class ConversationAPI {
 
     });
   }
+  async getSharedConversation(shared_id: string): Promise<ShareConversationResponse> {
+    return this.request<ShareConversationResponse>(`/conversation/v1/conversations/${shared_id}/get-share-url`, {
+      method: 'GET',
+    });
+  }
 
   async deleteConversation(conversation_id: string): Promise<DeleteConversationResponse> {
     return this.request<DeleteConversationResponse>(`/conversation/v1/conversations/${conversation_id}/delete`, {

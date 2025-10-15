@@ -53,6 +53,7 @@ interface UseChatReturn {
   handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
   handleEditMessage: (messageId: number, content: string, is_edited?: boolean) => void;
   handleSelectConversation: (conversation: any) => void;
+  handleShareConversation: (conversationId: string) => Promise<string | null>;
   handleNewChat: () => void;
   scrollToBottom: () => void;
   handleDeleteConversation: (conversationId: string) => void;
@@ -188,6 +189,16 @@ const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) 
 };
 
 
+
+const handleShareConversation = async (conversationId: string) => {
+  try {
+    const response = await conversation.shareConversation(conversationId, path.join(','));
+    return response
+  } catch (error) {
+    console.error('Failed to share conversation:', error);
+    return null
+  }
+};
 
 
 const handleChangePath = async (message_id: number,  type: string, edited_from_message_id?: number) => {
@@ -533,6 +544,7 @@ const handleDeleteConversation = async (conversationId: string) => {
     handleSelectConversation,
     handleNewChat,
     scrollToBottom,
+    handleShareConversation,
     handleDeleteConversation,
     
     // File upload actions (re-exported for convenience)

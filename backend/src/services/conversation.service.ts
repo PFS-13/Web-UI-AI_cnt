@@ -75,6 +75,22 @@ export class ConversationService {
       };
     }
   }
+
+  async getShared(shared_url: UUID) {
+    try {
+      const existingConversation = await this.conversationsRepository.findOne({ where: { shared_url } });
+      if (!existingConversation) {
+        throw new NotFoundException('URL not found');
+      }
+      const path = existingConversation.shared_path;
+      console.log(path);
+      return { path };
+    } catch (error) {
+      return {
+        message: `Failed to get shared conversation: ${error.message}`,
+      };
+    } 
+  }   
   
   async edit(conversation_id : UUID, title : string): Promise<{ message: string; }> {
     try {
