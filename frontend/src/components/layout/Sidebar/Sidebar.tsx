@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import { authAPI } from '../../../services';
+import SearchPopup from './SearchPopup';
+import type { Conversation } from '../../../types/chat.types';
 
 export interface SidebarProps {
   isMinimized: boolean;
@@ -13,6 +15,9 @@ export interface SidebarProps {
   };
   activated_conversation?: string;
   chatHistory?: Array<{ id: string; title: string; isActive: boolean }>;
+  conversations?: Conversation[];
+  onSelectConversation?: (conversation: Conversation) => void;
+  onNewChat?: () => void;
   onDeleteConversation: (conversationId: string) => void;
   isMobileOpen?: boolean;
   onMobileToggle?: () => void;
@@ -25,6 +30,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   user, 
   chatHistory, 
   activated_conversation, 
+  conversations = [],
+  onSelectConversation,
+  onNewChat,
   onDeleteConversation,
   isMobileOpen = false,
   onMobileToggle
@@ -34,12 +42,37 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '240px' });
   const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
   const [conversationMenuPosition, setConversationMenuPosition] = useState({ top: '0px', left: '0px' });
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
   const conversationMenuRef = useRef<HTMLDivElement>(null);
 
   const handleNewChat = () => {
     navigate('/');
+  };
+
+  const handleSearchClick = () => {
+    setIsSearchOpen(true);
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchOpen(false);
+  };
+
+  const handleSearchSelectConversation = (conversation: Conversation) => {
+    if (onSelectConversation) {
+      onSelectConversation(conversation);
+    }
+    setIsSearchOpen(false);
+  };
+
+  const handleSearchNewChat = () => {
+    if (onNewChat) {
+      onNewChat();
+    } else {
+      handleNewChat();
+    }
+    setIsSearchOpen(false);
   };
 
 
@@ -193,6 +226,21 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
   }, []);
 
+  // Keyboard shortcut for search (Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault();
+        handleSearchClick();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <div className={`${styles.sidebar} ${isMinimized && !isMobileOpen ? styles.sidebarMinimized : ''} ${isMobileOpen ? styles.open : ''}`}>
       {/* Mobile Hamburger Button - Only visible on mobile */}
@@ -241,6 +289,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           {!isMinimized && <span className={styles.shortcut}>Ctrl + Shift + O</span>}
         </button>
 
+
+        {/* Search Chats */}
+        <button 
+          className={`${styles.sidebarButton} ${isMinimized ? styles.sidebarButtonMinimized : ''}`} 
+          onClick={handleSearchClick}
+          title={isMinimized ? "Search chats" : ""}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          {!isMinimized && <span>Search chats</span>}
+          {!isMinimized && <span className={styles.shortcut}>Ctrl + K</span>}
+        </button>
 
         {/* Library */}
         <button 
@@ -474,6 +535,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      {/* Search Popup */}
+      <SearchPopup
+        isOpen={isSearchOpen}
+        onClose={handleSearchClose}
+        conversations={conversations}
+        onSelectConversation={handleSearchSelectConversation}
+        onNewChat={handleSearchNewChat}
+      />
     </div>
   );
 };

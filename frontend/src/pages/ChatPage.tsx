@@ -49,6 +49,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     handleDragLeave,
     handleDrop,
     // Conversation
+    conversations,
     chatHistory,
   } = useChat({
     mode,
@@ -75,6 +76,16 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
 
   const handleCloseMobileSidebar = () => {
     setIsMobileSidebarOpen(false);
+  };
+
+  const handleSelectConversation = (conversation: any) => {
+    // TODO: Implement select conversation
+    console.log('Select conversation:', conversation);
+  };
+
+  const handleNewChat = () => {
+    // TODO: Implement new chat
+    console.log('New chat');
   };
 
   // Handle attach dropdown
@@ -190,10 +201,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     
     <ChatLayout
       user={user}
+      conversations={conversations}
       chatHistory={chatHistory}
       activatedConversation={id}
       isSidebarMinimized={isSidebarMinimized}
       onToggleSidebar={() => setIsSidebarMinimized(!isSidebarMinimized)}
+      onSelectConversation={handleSelectConversation}
+      onNewChat={handleNewChat}
       onDeleteConversation={handleDeleteConversation}
       isMobileSidebarOpen={isMobileSidebarOpen}
       onMobileSidebarToggle={handleMobileSidebarToggle}
