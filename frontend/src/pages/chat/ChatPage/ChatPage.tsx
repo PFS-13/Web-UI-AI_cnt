@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, ChatInput } from '../../../components/chat';
+import { Header } from '../../../components/layout';
 import { useAuth } from '../../../hooks';
 import type { Message, Conversation } from '../../../types/chat.types';
 import { conversationAPI } from '../../../services/api';
@@ -11,6 +12,7 @@ const ChatPage: React.FC = () => {
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations on mount
@@ -106,10 +108,32 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className={styles.container}>
+      {/* Header */}
+      <Header 
+        onToggleSidebar={toggleSidebar}
+        isSidebarOpen={isSidebarOpen}
+      />
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className={`${styles.sidebarOverlay} ${styles.open}`}
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* ChatGPT Sidebar */}
-      <div className={styles.sidebar}>
+      <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ''}`}>
         {/* Logo */}
         <div className={styles.logo}>
           <div className={styles.logoIcon}>
@@ -265,24 +289,7 @@ const ChatPage: React.FC = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className={styles.main}>
-        {/* Top Bar */}
-        <div className={styles.topBar}>
-          <div className={styles.modelSelector}>
-            <span className={styles.modelName}>ChatGPT 5</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6,9 12,15 18,9"/>
-            </svg>
-          </div>
-          <div className={styles.topActions}>
-            <button className={styles.topActionButton}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+      <div className={`${styles.main} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
 
         {/* Main Content */}
         {currentConversation ? (

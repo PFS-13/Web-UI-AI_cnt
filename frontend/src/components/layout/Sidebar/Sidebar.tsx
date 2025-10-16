@@ -2,8 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import { authAPI } from '../../../services';
-import SearchPopup from './SearchPopup';
-import type { Conversation } from '../../../types/chat.types';
 
 export interface SidebarProps {
   isMinimized: boolean;
@@ -15,10 +13,9 @@ export interface SidebarProps {
   };
   activated_conversation?: string;
   chatHistory?: Array<{ id: string; title: string; isActive: boolean }>;
-  conversations?: Conversation[];
-  onSelectConversation?: (conversation: Conversation) => void;
-  onNewChat?: () => void;
   onDeleteConversation: (conversationId: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: () => void;
 }
 
 
@@ -28,14 +25,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   user, 
   chatHistory, 
   activated_conversation, 
-  conversations = [], 
-  onSelectConversation, 
-  onNewChat,
-  onDeleteConversation
+  onDeleteConversation,
+  isMobileOpen = false,
+  onMobileToggle
 }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '240px' });
   const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
   const [conversationMenuPosition, setConversationMenuPosition] = useState({ top: '0px', left: '0px' });
@@ -47,27 +42,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     navigate('/');
   };
 
-  const handleSearchClick = () => {
-    setIsSearchOpen(true);
-  };
-
-  const handleSearchClose = () => {
-    setIsSearchOpen(false);
-  };
-
-  const handleSearchSelectConversation = (conversation: Conversation) => {
-    if (onSelectConversation) {
-      onSelectConversation(conversation);
-    }
-  };
-
-  const handleSearchNewChat = () => {
-    if (onNewChat) {
-      onNewChat();
-    } else {
-      handleNewChat();
-    }
-  };
 
   const handleLibrary = () => {
     // Navigate to library or show library content
@@ -203,20 +177,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
   }, [isProfileDropdownOpen, openConversationMenuId]);
 
-  // Keyboard shortcut for search (Ctrl + K)
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === 'k') {
-        event.preventDefault();
-        setIsSearchOpen(true);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
 
   // Keyboard shortcut for new chat (Ctrl + Shift + O)
   useEffect(() => {
@@ -234,7 +194,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   return (
-    <div className={`${styles.sidebar} ${isMinimized ? styles.sidebarMinimized : ''}`}>
+    <div className={`${styles.sidebar} ${isMinimized && !isMobileOpen ? styles.sidebarMinimized : ''} ${isMobileOpen ? styles.open : ''}`}>
+      {/* Mobile Hamburger Button - Only visible on mobile */}
+      <div className={styles.mobileHamburger}>
+        <button 
+          className={styles.mobileHamburgerButton}
+          onClick={onMobileToggle || onToggle}
+          title={isMobileOpen ? "Close sidebar" : "Open sidebar"}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            {isMobileOpen ? (
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            ) : (
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            )}
+          </svg>
+        </button>
+      </div>
+
       {/* Logo and Toggle Button */}
       <div className={styles.sidebarHeader}>
         <div className={styles.logo}>
@@ -265,18 +241,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           {!isMinimized && <span className={styles.shortcut}>Ctrl + Shift + O</span>}
         </button>
 
-        {/* Search Chats */}
-        <button 
-          className={`${styles.sidebarButton} ${isMinimized ? styles.sidebarButtonMinimized : ''}`} 
-          onClick={handleSearchClick}
-          title={isMinimized ? "Search chats" : ""}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-          {!isMinimized && <span>Search chats</span>}
-          {!isMinimized && <span className={styles.shortcut}>Ctrl + K</span>}
-        </button>
 
         {/* Library */}
         <button 
@@ -510,14 +474,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Search Popup */}
-      <SearchPopup
-        isOpen={isSearchOpen}
-        onClose={handleSearchClose}
-        conversations={conversations}
-        onSelectConversation={handleSearchSelectConversation}
-        onNewChat={handleSearchNewChat}
-      />
     </div>
   );
 };

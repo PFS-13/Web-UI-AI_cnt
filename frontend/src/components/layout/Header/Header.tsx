@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../../common';
 import { useAuth } from '../../../hooks';
@@ -7,12 +7,17 @@ import styles from './Header.module.css';
 
 export interface HeaderProps {
   className?: string;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ className = '' }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  className = '', 
+  onToggleSidebar,
+  isSidebarOpen = false 
+}) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: '🏠' },
@@ -26,11 +31,12 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
 
   const handleLogout = () => {
     logout();
-    setIsMenuOpen(false);
   };
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+
+  const handleShareClick = () => {
+    // TODO: Implement share functionality
+    console.log('Share clicked');
   };
 
   const headerClasses = [
@@ -41,6 +47,7 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
   return (
     <header className={headerClasses}>
       <div className={styles.container}>
+        {/* Desktop Logo */}
         <div className={styles.logo}>
           <Link to="/" className={styles.logoLink}>
             <span className={styles.logoIcon}>🤖</span>
@@ -48,6 +55,7 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
           </Link>
         </div>
 
+        {/* Desktop Navigation */}
         <nav className={styles.nav}>
           {navigation.map((item) => (
             <Link
@@ -61,6 +69,7 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
           ))}
         </nav>
 
+        {/* Desktop User Section */}
         <div className={styles.userSection}>
           <div className={styles.userInfo}>
             <div className={styles.userAvatar}>
@@ -96,47 +105,34 @@ const Header: React.FC<HeaderProps> = ({ className = '' }) => {
               Logout
             </Button>
           </div>
+        </div>
 
+        {/* Mobile Controls */}
+        <div className={styles.mobileControls}>
+          {/* Mobile Hamburger Button */}
           <button
             className={styles.mobileMenuButton}
-            onClick={toggleMenu}
-            aria-label="Toggle menu"
+            onClick={onToggleSidebar}
+            aria-label="Toggle sidebar"
           >
             <span className={styles.menuIcon}>
-              {isMenuOpen ? '✕' : '☰'}
+              {isSidebarOpen ? '✕' : '☰'}
             </span>
+          </button>
+
+          {/* Mobile Share Button */}
+          <button
+            className={styles.mobileShareButton}
+            onClick={handleShareClick}
+            aria-label="Share"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+            </svg>
+            <span className={styles.shareText}>Share</span>
           </button>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className={styles.mobileMenu}>
-          <div className={styles.mobileNav}>
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`${styles.mobileNavLink} ${isActivePath(item.href) ? styles.active : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <span className={styles.mobileNavIcon}>{item.icon}</span>
-                <span className={styles.mobileNavText}>{item.name}</span>
-              </Link>
-            ))}
-          </div>
-          <div className={styles.mobileActions}>
-            <Button
-              variant="secondary"
-              size="medium"
-              onClick={handleLogout}
-              className={styles.mobileLogoutButton}
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
