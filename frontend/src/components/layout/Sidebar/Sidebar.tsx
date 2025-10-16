@@ -19,6 +19,8 @@ export interface SidebarProps {
   onSelectConversation?: (conversation: Conversation) => void;
   onNewChat?: () => void;
   onDeleteConversation: (conversationId: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: () => void;
 }
 
 
@@ -28,17 +30,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   user, 
   chatHistory, 
   activated_conversation, 
-  conversations = [], 
-  onSelectConversation, 
+  conversations = [],
+  onSelectConversation,
   onNewChat,
-  onDeleteConversation
+  onDeleteConversation,
+  isMobileOpen = false,
+  onMobileToggle
 }) => {
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: '0px', left: '0px', width: '240px' });
   const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
   const [conversationMenuPosition, setConversationMenuPosition] = useState({ top: '0px', left: '0px' });
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const profileSectionRef = useRef<HTMLDivElement>(null);
   const conversationMenuRef = useRef<HTMLDivElement>(null);
@@ -59,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (onSelectConversation) {
       onSelectConversation(conversation);
     }
+    setIsSearchOpen(false);
   };
 
   const handleSearchNewChat = () => {
@@ -67,7 +72,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     } else {
       handleNewChat();
     }
+    setIsSearchOpen(false);
   };
+
 
   const handleLibrary = () => {
     // Navigate to library or show library content
@@ -203,20 +210,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
   }, [isProfileDropdownOpen, openConversationMenuId]);
 
-  // Keyboard shortcut for search (Ctrl + K)
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === 'k') {
-        event.preventDefault();
-        setIsSearchOpen(true);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
 
   // Keyboard shortcut for new chat (Ctrl + Shift + O)
   useEffect(() => {
@@ -233,8 +226,39 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
   }, []);
 
+  // Keyboard shortcut for search (Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault();
+        handleSearchClick();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
-    <div className={`${styles.sidebar} ${isMinimized ? styles.sidebarMinimized : ''}`}>
+    <div className={`${styles.sidebar} ${isMinimized && !isMobileOpen ? styles.sidebarMinimized : ''} ${isMobileOpen ? styles.open : ''}`}>
+      {/* Mobile Hamburger Button - Only visible on mobile */}
+      <div className={styles.mobileHamburger}>
+        <button 
+          className={styles.mobileHamburgerButton}
+          onClick={onMobileToggle || onToggle}
+          title={isMobileOpen ? "Close sidebar" : "Open sidebar"}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            {isMobileOpen ? (
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            ) : (
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            )}
+          </svg>
+        </button>
+      </div>
+
       {/* Logo and Toggle Button */}
       <div className={styles.sidebarHeader}>
         <div className={styles.logo}>
@@ -264,6 +288,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {!isMinimized && <span>New chat</span>}
           {!isMinimized && <span className={styles.shortcut}>Ctrl + Shift + O</span>}
         </button>
+
 
         {/* Search Chats */}
         <button 

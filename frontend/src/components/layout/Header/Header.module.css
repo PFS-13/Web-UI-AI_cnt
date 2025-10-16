@@ -4,7 +4,7 @@
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 1001;
 }
 
 .container {
@@ -44,6 +44,7 @@
 .logoText {
   font-size: var(--font-size-lg);
 }
+
 
 .nav {
   display: flex;
@@ -163,6 +164,26 @@
   color: var(--color-gray-900);
 }
 
+/* Force mobile menu button to show on mobile */
+@media (max-width: 768px) {
+  .mobileMenuButton {
+    display: flex !important;
+  }
+  
+  .logo {
+    display: none !important;
+  }
+  
+  .nav {
+    display: none !important;
+  }
+  
+  .userSection {
+    display: none !important;
+  }
+  
+}
+
 .menuIcon {
   font-size: var(--font-size-lg);
   font-weight: bold;
@@ -221,30 +242,123 @@
   width: 100%;
 }
 
+.mobileControls {
+  display: none;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Force mobile controls to show on mobile */
+@media (max-width: 768px) {
+  .mobileControls {
+    display: flex !important;
+  }
+  
+  .logo {
+    display: none !important;
+  }
+  
+  .nav {
+    display: none !important;
+  }
+  
+  .userSection {
+    display: none !important;
+  }
+  
+}
+
+.mobileShareButton {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobileShareButton:hover {
+  background: var(--color-primary-dark);
+}
+
+
+.shareText {
+  font-size: var(--font-size-sm);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .nav {
-    display: none;
+    display: none !important;
   }
   
   .userDetails {
-    display: none;
+    display: none !important;
   }
   
   .actions {
-    display: none;
+    display: none !important;
+  }
+  
+  .logo {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+  
+  .logoText {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  .logoIcon {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  .userSection {
+    display: none !important;
+  }
+  
+  .mobileControls {
+    display: flex !important;
   }
   
   .mobileMenuButton {
-    display: block;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--color-gray-600);
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-lg);
   }
   
-  .mobileMenu {
-    display: block;
+  .mobileShareButton {
+    display: flex !important;
   }
   
   .container {
-    padding: 0 0.75rem;
+    padding: 0 1rem;
+    justify-content: space-between;
+    height: 3.5rem;
   }
 }
 
@@ -253,9 +367,37 @@
     height: 3.5rem;
   }
   
+  .mobileControls {
+    gap: 0.5rem;
+  }
+  
+  .mobileShareButton {
+    padding: 0.375rem 0.75rem;
+    font-size: var(--font-size-xs);
+  }
+  
+  .shareText {
+    display: none;
+  }
+  
+  .mobileMenuButton {
+    padding: 0.375rem;
+  }
+  
+  .menuIcon {
+    font-size: var(--font-size-base);
+  }
+  
+  .mobileShareButton svg {
+    width: 16px;
+    height: 16px;
+  }
+  
   .logoText {
     display: none;
   }
+  
+  
   
   .userAvatar {
     width: 2rem;

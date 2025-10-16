@@ -13,6 +13,8 @@ interface ChatLayoutProps {
   onSelectConversation: (conversation: any) => void;
   onNewChat: () => void;
   onDeleteConversation: (conversationId: string) => void;
+  isMobileSidebarOpen?: boolean;
+  onMobileSidebarToggle?: () => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -25,7 +27,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onToggleSidebar,
   onSelectConversation,
   onNewChat,
-  onDeleteConversation
+  onDeleteConversation,
+  isMobileSidebarOpen = false,
+  onMobileSidebarToggle
 }) => {
   return (
     <div className={styles.container}>
@@ -40,6 +44,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         onSelectConversation={onSelectConversation}
         onNewChat={onNewChat}
         onDeleteConversation={onDeleteConversation}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileToggle={onMobileSidebarToggle}
       />
 
       {/* Main Content */}

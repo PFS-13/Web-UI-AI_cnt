@@ -143,6 +143,32 @@
   border-color: #555;
 }
 
+/* Mobile Hamburger Button */
+.mobileHamburger {
+  display: none;
+}
+
+.mobileHamburgerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.mobileHamburgerButton:hover {
+  background: #333;
+  color: white;
+}
+
 /* Universal sidebar button styles - applied to all buttons */
 .sidebarButton {
   display: flex;
@@ -349,24 +375,75 @@
   background: #555;
 }
 
+/* Mobile Overlay Styles */
+.sidebarOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebarOverlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid #333;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    min-width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    border-right: 1px solid #333;
+    border-bottom: none;
     flex-direction: column;
     padding: 0.5rem;
     gap: 0.5rem;
   }
   
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  /* Force sidebar to be expanded on mobile, not minimized */
   .sidebarMinimized {
-    width: 100%;
-    min-width: 100%;
+    width: 280px;
+    min-width: 280px;
     padding: 0.5rem;
     flex-direction: column;
+    transform: translateX(-100%);
+  }
+  
+  .sidebarMinimized.open {
+    transform: translateX(0);
+  }
+  
+  /* Override minimized styles for mobile - force expanded layout */
+  .sidebar.sidebarMinimized {
+    width: 280px !important;
+    min-width: 280px !important;
+    padding: 0.5rem !important;
+    flex-direction: column !important;
+  }
+  
+  /* Ensure mobile sidebar never looks minimized */
+  .sidebar.open {
+    width: 280px !important;
+    min-width: 280px !important;
+    padding: 0.5rem !important;
+    flex-direction: column !important;
   }
   
   .sidebarHeader {
@@ -381,14 +458,19 @@
   }
   
   .toggleButton {
-    margin-top: 0;
-    width: auto;
-    flex-shrink: 0;
+    display: none !important; /* Hide desktop toggle button on mobile */
   }
   
   .toggleButtonMinimized {
-    margin-top: 0;
-    width: auto;
+    display: none !important; /* Hide desktop toggle button on mobile */
+  }
+  
+  .mobileHamburger {
+    display: none !important;
+  }
+  
+  .mobileHamburgerButton {
+    display: none !important;
   }
   
   .sidebarButtonMinimized {
@@ -396,8 +478,37 @@
     margin-bottom: 0;
   }
   
+  /* Force sidebar buttons to be expanded on mobile */
+  .sidebarButton {
+    width: 100% !important;
+    padding: 0.5rem !important;
+    justify-content: flex-start !important;
+  }
+  
+  .sidebarButton span {
+    display: inline !important;
+  }
+  
   .shortcut {
     display: none;
+  }
+  
+  /* Force sidebar content to be visible on mobile */
+  .stickyButtons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .conversationList {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+  }
+  
+  .profileSection {
+    display: flex !important;
+    margin-top: auto !important;
   }
   
   /* All sidebar buttons use universal .sidebarButton styles */
