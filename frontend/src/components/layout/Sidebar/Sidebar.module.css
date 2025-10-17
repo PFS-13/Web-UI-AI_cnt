@@ -400,8 +400,8 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
-    min-width: 280px;
+    width: 260px;
+    min-width: 260px;
     height: 100vh;
     z-index: 1000;
     transform: translateX(-100%);
@@ -410,7 +410,39 @@
     border-bottom: none;
     flex-direction: column;
     padding: 0.5rem;
-    gap: 0.5rem;
+    overflow-y: auto;
+    overflow-x: visible;
+    background: #1a1a1a;
+  }
+  
+  /* Custom scrollbar styling for mobile - same as desktop */
+  .sidebar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar::-webkit-scrollbar-track {
+    background: #1a1a1a !important; /* Same as sidebar background */
+    border-radius: 4px;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb {
+    background: #6b7280 !important; /* Gray thumb */
+    border-radius: 4px;
+    border: 1px solid #9ca3af;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    background: #4b5563 !important; /* Darker gray on hover */
+  }
+
+  .sidebar::-webkit-scrollbar-corner {
+    background: #1a1a1a !important;
+  }
+
+  /* Firefox scrollbar styling for mobile */
+  .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: #6b7280 #1a1a1a;
   }
   
   .sidebar.open {
@@ -419,8 +451,8 @@
   
   /* Force sidebar to be expanded on mobile, not minimized */
   .sidebarMinimized {
-    width: 280px;
-    min-width: 280px;
+    width: 260px;
+    min-width: 260px;
     padding: 0.5rem;
     flex-direction: column;
     transform: translateX(-100%);
@@ -432,29 +464,46 @@
   
   /* Override minimized styles for mobile - force expanded layout */
   .sidebar.sidebarMinimized {
-    width: 280px !important;
-    min-width: 280px !important;
+    width: 260px !important;
+    min-width: 260px !important;
     padding: 0.5rem !important;
     flex-direction: column !important;
   }
   
   /* Ensure mobile sidebar never looks minimized */
   .sidebar.open {
-    width: 280px !important;
-    min-width: 280px !important;
+    width: 260px !important;
+    min-width: 260px !important;
     padding: 0.5rem !important;
     flex-direction: column !important;
   }
   
   .sidebarHeader {
-    margin-bottom: 0.5rem;
-    margin-right: 0;
-    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #1a1a1a;
+    z-index: 10;
   }
   
   .logo {
-    margin-bottom: 0;
-    margin-right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  
+  .logo:hover {
+    background: #333;
   }
   
   .toggleButton {
@@ -478,23 +527,52 @@
     margin-bottom: 0;
   }
   
-  /* Force sidebar buttons to be expanded on mobile */
+  /* Use desktop normal state for mobile sidebar buttons */
   .sidebarButton {
-    width: 100% !important;
-    padding: 0.5rem !important;
-    justify-content: flex-start !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background: none;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-align: left;
+    border: none;
+    overflow: hidden;
+  }
+  
+  .sidebarButton svg {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebarButton:hover {
+    background: #333;
+    color: white;
   }
   
   .sidebarButton span {
-    display: inline !important;
+    display: inline;
   }
   
   .shortcut {
     display: none;
   }
   
-  /* Force sidebar content to be visible on mobile */
+  /* Force sidebar content to be visible on mobile - use desktop normal state */
   .stickyButtons {
+    position: sticky;
+    top: 45px; /* Exact header height: 40px (logo) + 16px (padding) */
+    background: #1a1a1a;
+    z-index: 9;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
     display: flex !important;
     flex-direction: column !important;
     gap: 0.5rem !important;
@@ -507,8 +585,9 @@
   }
   
   .profileSection {
+    margin-top: auto;
+    border-top: 1px solid #333;
     display: flex !important;
-    margin-top: auto !important;
   }
   
   /* All sidebar buttons use universal .sidebarButton styles */
