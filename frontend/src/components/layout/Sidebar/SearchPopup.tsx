@@ -2,6 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Conversation } from '../../../types/chat.types';
 import styles from './SearchPopup.module.css';
 
+interface SearchResult {
+  conversation: Conversation;
+  searchResult: {
+    type: string;
+    content: string;
+    match: boolean;
+    messageRole?: 'user' | 'assistant';
+  };
+  snippet: string;
+  highlightedSnippet: string;
+  highlightedTitle: string;
+}
+
 interface SearchPopupProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +32,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -153,7 +166,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({
         })
         .filter(Boolean);
       
-      setSearchResults(searchResults);
+      setSearchResults(searchResults.filter(Boolean) as SearchResult[]);
       setFilteredConversations(searchResults.map(result => result!.conversation));
     } else {
       const recentConversations = conversations.slice(0, 6);

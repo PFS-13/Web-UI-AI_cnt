@@ -157,7 +157,6 @@ const HomePage: React.FC = () => {
     if (option === 'photos') {
       fileInputRef.current?.click();
     }
-    // TODO: Implement other options
     setIsAttachDropdownOpen(false);
   };
 

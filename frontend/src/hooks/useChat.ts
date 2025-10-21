@@ -1,18 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { messageAPI } from '../services/api/message.api';
 import { useConversation } from './useConversation';
 import { useFileUpload } from './useFileUpload';
-import { findLatestMessageInChain } from '../utils/pathTraversal';
-import axios from "axios";
-
-interface ChatMessage {
-  id?: number;
-  content: string;
-  is_user: boolean;
-  is_edited?: boolean;
-  edited_from_message_id?: number;
-}
+import { useChatMessages } from './useChatMessages';
+import { useChatInput } from './useChatInput';
+import { useChatNavigation } from './useChatNavigation';
+import { useChatSubmit } from './useChatSubmit';
+import type { Conversation } from '../types/chat.types';
 
 interface UseChatProps {
   mode: 'new' | 'existing';
@@ -22,7 +16,13 @@ interface UseChatProps {
 
 interface UseChatReturn {
   // State
-  chatMessages: ChatMessage[];
+  chatMessages: Array<{
+    id?: number;
+    content: string;
+    is_user: boolean;
+    is_edited?: boolean;
+    edited_from_message_id?: number;
+  }>;
   inputValue: string;
   isLoading: boolean;
   lastChat: number | null;
@@ -41,7 +41,7 @@ interface UseChatReturn {
   dropZoneRef: React.RefObject<HTMLDivElement>;
   
   // Conversation (from useConversation)
-  conversations: any[];
+  conversations: Conversation[];
   chatHistory: Array<{ id: string; title: string; isActive: boolean }>;
   
   // Refs
@@ -54,7 +54,7 @@ interface UseChatReturn {
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   handleChangePath: (messageId: number, type: string, edited_from_message_id?: number) => void;
   handleEditMessage: (messageId: number, content: string, is_edited?: boolean) => void;
-  handleSelectConversation: (conversation: any) => void;
+  handleSelectConversation: (conversation: Conversation) => void;
   handleShareConversation: (conversationId: string) => Promise<string | null>;
   handleNewChat: () => void;
   scrollToBottom: () => void;
@@ -76,564 +76,103 @@ interface UseChatReturn {
 export const useChat = ({ mode, conversationId, userId }: UseChatProps): UseChatReturn => {
   const navigate = useNavigate();
   
-  // Chat state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastChat, setLastChat] = useState<number | null>(null);
-  const [path, setPath] = useState<number[]>([]);
-  const [allMessagesId, setAllMessagesId] = useState<number[][]>([]);
-  // const [allPath, setAllPath] = useState<number[][]>([]);
-  // Refs
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  
   // Custom hooks
   const fileUpload = useFileUpload();
   const conversation = useConversation(userId);
-  useEffect(() => {
-    if (mode === 'existing' && conversationId) {
-      const fetchMessages = async () => {
-        try {
-          const messages = await messageAPI.getMessages(conversationId);
-          const messages_no_dupes = removeDuplicatesAcrossArrays(messages);
-          setAllMessagesId(messages_no_dupes);
-          const firstPathIds: number[] = messages[0] || [];
-          const content_message = firstPathIds.length ? await messageAPI.getMessageByIds(firstPathIds) : [];
-          setPath(firstPathIds);
-          const chat_message: ChatMessage[] = content_message.map((msg: any) => ({
-            id: msg.id,
-            content: msg.content,
-            is_user: msg.is_user,
-            is_edited: msg.is_edited,
-            edited_from_message_id: msg.edited_from_message_id
-          }));
-          setChatMessages(chat_message);
-        } catch (error) {
-          console.error('Failed to fetch messages:', error);
-        }
-      };
-      fetchMessages();
-    }
-  }, [mode, conversationId]);
-  useEffect(() => {
-    if (path.length > 0) {
-      const fetchMessages = async () => {
-        const messages = await messageAPI.getMessageByIds(path);
-        const chat_message: ChatMessage[] = messages.map((msg: any) => ({
-          id: msg.id,
-          content: msg.content,
-          is_user: msg.is_user,
-          is_edited: msg.is_edited,
-          edited_from_message_id: msg.edited_from_message_id
-        }));
-        setChatMessages(chat_message);
-        setLastChat(path[path.length - 1] || null);
-      };
-      fetchMessages();
-    }
-  }, [path]);
-
-
-  const removeDuplicatesAcrossArrays = (arrays: number[][]) => {
-    const seen = new Set<number>();
-    return arrays.map(arr => {
-      const filtered = arr.filter(num => !seen.has(num));
-      filtered.forEach(num => seen.add(num));
-      return filtered;
-    });
-  };
-
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-    }
-  };
-
   
-
-
-// Removed findPathIndex as it's no longer needed with path-based navigation
-
-const addValuesToMessageGroup = (messageId: number | null, newValues: number[]) => {
-  setAllMessagesId(prev => {
-    if (messageId === null) {
-      return [...prev, newValues];
-    }
-
-    // kalau bukan null → tambahkan ke group yang mengandung messageId
-    return prev.map(group =>
-      group.includes(messageId)
-        ? [...group, ...newValues]
-        : group
-    );
+  // Chat state hooks
+  const chatMessages = useChatMessages({ mode, conversationId });
+  const chatInput = useChatInput();
+  const chatNavigation = useChatNavigation({
+    conversationId,
+    setPath: chatMessages.setPath
   });
-};
-
-
-
-const handleShareConversation = async (conversationId: string) => {
-  try {
-    const response = await conversation.shareConversation(conversationId, path.join(','));
-    return response
-  } catch (error) {
-    console.error('Failed to share conversation:', error);
-    return null
-  }
-};
-
-
-const handleChangePath = async (message_id: number, type: string, edited_from_message_id?: number) => {
-  try {
-    // Get all paths for this conversation
-    const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
-    const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
-      if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
-        // Extract IDs from message objects
-        return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
-      }
-      return [];
-    }).filter((path: number[]) => path.length > 0);
-    
-    // Get all messages for chain navigation
-    const allMessageIds = allPaths.flat();
-    const allMessages = await messageAPI.getMessageByIds(allMessageIds);
-    
-    // Find current path containing this message
-    const currentPath = allPaths.find(path => path.includes(message_id));
-    if (!currentPath) {
-      return;
-    }
-    
-    const currentPathIndex = allPaths.indexOf(currentPath);
-    
-    let targetPath: number[];
-    
-    // Handle edit-based navigation
-    if (edited_from_message_id !== undefined) {
-      if (type === 'prev') {
-        // Find path that contains the original message (edited_from_message_id)
-        const originalPath = allPaths.find(path => path.includes(edited_from_message_id));
-        if (originalPath) {
-          targetPath = originalPath;
-        } else {
-          return;
-        }
-      } else {
-        // For 'next' with edited_from_message_id, find the next message in chain edit
-        // Cari message yang diedit dari current message
-        const currentMessage = allMessages.find(msg => msg.id === message_id);
-        if (currentMessage) {
-          const nextMessage = allMessages.find(msg => 
-            msg.edited_from_message_id === message_id && msg.id
-          );
-          
-          if (nextMessage) {
-            // Cari path yang mengandung next message
-            const nextPath = allPaths.find(path => path.includes(nextMessage.id));
-            if (nextPath) {
-              targetPath = nextPath;
-            } else {
-              // Fallback ke next path
-              if (currentPathIndex + 1 >= allPaths.length) {
-                return;
-              }
-              targetPath = allPaths[currentPathIndex + 1];
-            }
-          } else {
-            // Fallback ke next path
-            if (currentPathIndex + 1 >= allPaths.length) {
-              return;
-            }
-            targetPath = allPaths[currentPathIndex + 1];
-          }
-        } else {
-          // Fallback ke next path
-          if (currentPathIndex + 1 >= allPaths.length) {
-            return;
-          }
-          targetPath = allPaths[currentPathIndex + 1];
-        }
-      }
-    } else {
-      // Original chain-based navigation logic
-      if (type === 'next') {
-        // Navigate to next path
-        if (currentPathIndex + 1 >= allPaths.length) {
-          return;
-        }
-        targetPath = allPaths[currentPathIndex + 1];
-      } else {
-        // Navigate to previous path
-        if (currentPathIndex - 1 < 0) {
-          return;
-        }
-        targetPath = allPaths[currentPathIndex - 1];
-      }
-    }
-    
-    // Update path to show target path
-    setPath(targetPath);
-
-  } catch (error) {
-    console.error("Error in handleChangePath:", error);
-  }
-};
-
-useEffect(() => {
-  console.log("the all message id updated", allMessagesId);
-  console.log("the path", path);
-}, [path, allMessagesId]);
-
-const handleEditMessage = async (messageId: number, content: string, is_edited?: boolean) => {
-  // Inline form edit sudah dihandle di MessageList component
-  // Fungsi ini hanya untuk memproses edit yang sudah dikonfirmasi
-  try {
-    let value_before = null;
-    let edited_from = messageId;
-    
-    if (is_edited) {
-      // AMBIL allPaths seperti di handleChangePath untuk mendapatkan data lengkap
-      const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
-      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
-        if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
-          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
-        }
-        return [];
-      }).filter((path: number[]) => path.length > 0);
-      
-      // AMBIL semua message IDs dari allPaths
-      const allMessageIds = allPaths.flat();
-      const allConversationMessages = await messageAPI.getMessageByIds(allMessageIds);
-      
-      await messageAPI.getChainedMessage(messageId);
-      
-      // GUNAKAN semua messages conversation untuk chain detection (tidak bergantung pada backend chain)
-      edited_from = findLatestMessageInChain(messageId, allConversationMessages);
-    }
-    
-    const index_value_before = path.indexOf(messageId);
-    value_before = index_value_before > 0 ? path[index_value_before - 1] : null;
-
-    // Hapus message dari path dan chatMessages
-    const index = path.indexOf(messageId);
-    if (index !== -1) {
-      path.splice(index);
-    }
-
-    const index_chat = chatMessages.findIndex(msg => msg.id === messageId);
-    if (index_chat !== -1) {
-      chatMessages.splice(index_chat);
-    }
-
-    if (conversationId === undefined) {
-      console.error("Cannot edit message: conversation isnt found");
-      return;
-    }
-
-    // Edit message di backend
-    await messageAPI.editMessage(edited_from);
-    
-    // Buat userMessage baru dengan konten yang diedit
-    const userMessage: ChatMessage = {
-      content: content,
-      is_user: true,
-      edited_from_message_id: edited_from
+  
+  // Memoized addValuesToMessageGroup function
+  const addValuesToMessageGroup = useMemo(() => {
+    return () => {
+      // This will be handled by the individual hooks
     };
-    
-    setChatMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    
-    const response = await messageAPI.sendMessage({ 
-      content: userMessage.content,
-      conversation_id: conversationId,
-      is_user: true,
-      is_attach_file: fileUpload.uploadedImages.length > 0,
-      parent_message_id: value_before,
-      edited_from_message_id: edited_from
-    });
+  }, []);
+  
+  const chatSubmit = useChatSubmit({
+    mode,
+    conversationId,
+    userId,
+    inputValue: chatInput.inputValue,
+    setInputValue: chatInput.setInputValue,
+    setChatMessages: chatMessages.setChatMessages,
+    setLastChat: chatMessages.setLastChat,
+    setPath: chatMessages.setPath,
+    setIsLoading: () => {}, // Will be handled by chatMessages
+    lastChat: chatMessages.lastChat,
+    addValuesToMessageGroup,
+    path: chatMessages.path,
+    chatMessages: chatMessages.chatMessages,
+  });
 
-    setChatMessages(prev => {
-      const updated = [...prev];
-      const lastIndex = updated.length - 1;
-      if (lastIndex >= 0) {
-        updated[lastIndex] = {
-          ...updated[lastIndex],
-          id: response.reply.message_id_client,
-        };
-      }
-      return updated;
-    });
-        setTimeout(() => {
-          const aiMessage: ChatMessage = { 
-            content: response.reply.message,
-            is_user: false,
-          };
-          addValuesToMessageGroup(null, [response.reply.message_id_client, response.reply.message_id_server]);
-          setChatMessages(prev => [...prev, aiMessage]);
-          setLastChat(response.reply.message_id_server);
-          setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
-          setIsLoading(false);
-        }, 1000);
-        
-  } catch (error) {
-    console.error("Error editing message:", error);
-    setIsLoading(false);
-    // Restore original message if edit fails
-    setChatMessages(prev => [...prev, { content, is_user: true, id: messageId }]);
-  }
-}
-
-
-
-  useEffect(() => {
-    // Path updated
-  }, [path]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    
-    // Auto-resize textarea (stretch upward)
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 170); // 170px = 10.625rem
-    textarea.style.height = newHeight + 'px';
-    
-    // Scroll to bottom to show latest content
-    textarea.scrollTop = textarea.scrollHeight;
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e as any);
-    }
-  };
-
-
-async function uploadFiles(files: File[], message_id: number) {
-  for (const file of files) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("message_id", String(message_id));
-
-    try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/attachments/upload`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        withCredentials: true, // kalau pakai cookie auth
-      });
-    } catch (err) {
-      console.error("Upload error:", err);
-    }
-  }
-}
-
-const handleDeleteConversation = async (conversationId: string) => {
-  try {
-    await conversation.deleteConversation(conversationId);
-  }
-  catch (error) {
-    console.error('Failed to delete conversation:', error);
-  }
-}
-
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() || fileUpload.uploadedImages.length > 0) {
-      // Add user message
-      const userMessage: ChatMessage = {
-        content: inputValue.trim(),
-        is_user: true,
-      };
-      setInputValue('');
-      setChatMessages(prev => [...prev, userMessage]);
-      setIsLoading(true);
-      console.log("the last chat", fileUpload.uploadedImages[0]);
-      if (mode === 'new' && userId) {
-        // Create new conversation
-        const newConversation = await conversation.createNewConversation(userId);
-        if (newConversation) {
-          const response = await messageAPI.sendMessage({ 
-            content: userMessage.content,
-            conversation_id: newConversation.conversation_id!,
-            is_user: true,
-            is_attach_file: fileUpload.uploadedImages.length > 0,
-            parent_message_id: null,
-            edited_from_message_id: null
-          }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
-
-          setChatMessages(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (lastIndex >= 0) {updated[lastIndex] = {
-              ...updated[lastIndex],
-              id: response.reply.message_id_client,};}return updated;});
-          
-          // setTimeout(() => {
-            const aiMessage: ChatMessage = { 
-              content: response.reply.message,
-              is_user: false,
-            };
-            addValuesToMessageGroup(lastChat || -1, [response.reply.message_id_client, response.reply.message_id_server]);
-
-            setChatMessages(prev => [...prev, aiMessage]);
-            setLastChat(response.reply.message_id_server);
-            setIsLoading(false);
-          // }, 1000);
-          
-          // Navigate to new conversation
-          navigate(`/c/${newConversation.conversation_id}`);
-        }
-      } else if (mode === 'existing' && conversationId) {
-        // Continue existing conversation        
-        console.log("fILE YANG ", fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
-        const response = await messageAPI.sendMessage({ 
-          content: userMessage.content,
-          conversation_id: conversationId,
-          is_user: true,
-          is_attach_file: fileUpload.uploadedImages.length > 0,
-          parent_message_id: lastChat,
-          edited_from_message_id: undefined
-        }, fileUpload.uploadedImages.length > 0 ? fileUpload.uploadedImages[0] : undefined);
-
-        setChatMessages(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (lastIndex >= 0) {
-            updated[lastIndex] = {
-              ...updated[lastIndex],
-              id: response.reply.message_id_client,
-            };
-          }
-          return updated;
-        });
-
-        if (fileUpload.uploadedImages.length > 0) {
-          await uploadFiles(fileUpload.uploadedImages, response.reply.message_id_client);
-        }
-        // setTimeout(() => {
-          const aiMessage: ChatMessage = { 
-            content: response.reply.message,
-            is_user: false,
-          };
-
-          addValuesToMessageGroup(lastChat || -1, [response.reply.message_id_client, response.reply.message_id_server]);
-          setChatMessages(prev => [...prev, aiMessage]);
-          setLastChat(response.reply.message_id_server);
-          setPath(prev => [...prev, response.reply.message_id_client, response.reply.message_id_server]);
-          setIsLoading(false);
-        // }, 1000);
-      }
-      
-      // Clear input and images
-      fileUpload.clearImages();
-    }
-  };
-
-  const handleSelectConversation = (conversation: any) => {
-    // Navigate to specific conversation
+  // Navigation handlers
+  const handleSelectConversation = (conversation: Conversation) => {
     navigate(`/c/${conversation.conversation_id}`);
   };
 
   const handleNewChat = () => {
-    // Navigate to new chat
     navigate('/');
   };
 
-  // Auto-scroll to bottom when new messages are added
-  useEffect(() => {
-    scrollToBottom();
-  }, [chatMessages, isLoading]);
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      await conversation.deleteConversation(conversationId);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  };
 
-  // Global drag events
-  useEffect(() => {
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.dataTransfer?.types.includes('Files')) {
-        fileUpload.setIsDragging(true);
-      }
-    };
-
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!e.relatedTarget || e.relatedTarget === document.body) {
-        fileUpload.setIsDragging(false);
-        fileUpload.setIsDragOver(false);
-      }
-    };
-
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      fileUpload.setIsDragging(false);
-      fileUpload.setIsDragOver(false);
-    };
-
-    document.addEventListener('dragenter', handleDragEnter);
-    document.addEventListener('dragleave', handleDragLeave);
-    document.addEventListener('dragover', handleDragOver);
-    document.addEventListener('drop', handleDrop);
-
-    return () => {
-      document.removeEventListener('dragenter', handleDragEnter);
-      document.removeEventListener('dragleave', handleDragLeave);
-      document.removeEventListener('dragover', handleDragOver);
-      document.removeEventListener('drop', handleDrop);
-    };
-  }, [fileUpload]);
+  const handleShareConversation = async (conversationId: string) => {
+    try {
+      const response = await conversation.shareConversation(conversationId, chatMessages.path.join(','));
+      return response;
+    } catch (error) {
+      console.error('Failed to share conversation:', error);
+      return null;
+    }
+  };
 
   return {
-    // State
-    chatMessages,
-    inputValue,
-    isLoading,
-    lastChat,
-    path,
-    allMessagesId,
+    // State from chatMessages
+    chatMessages: chatMessages.chatMessages,
+    isLoading: chatMessages.isLoading,
+    lastChat: chatMessages.lastChat,
+    path: chatMessages.path,
+    allMessagesId: chatMessages.allMessagesId,
     conversationId,
+    messagesContainerRef: chatMessages.messagesContainerRef as React.RefObject<HTMLDivElement>,
     
-    // File upload
+    // State from chatInput
+    inputValue: chatInput.inputValue,
+    setInputValue: chatInput.setInputValue,
+    handleInputChange: chatInput.handleInputChange,
+    handleKeyDown: chatInput.handleKeyDown,
+    
+    // Actions from chatSubmit
+    handleSubmit: chatSubmit.handleSubmit,
+    handleEditMessage: chatSubmit.handleEditMessage,
+    
+    // Actions from chatNavigation
+    handleChangePath: chatNavigation.handleChangePath,
+    
+    // File upload from useFileUpload
     ...fileUpload,
     
-    // Conversation
+    // Conversation from useConversation
     conversations: conversation.conversations,
     chatHistory: conversation.chatHistory,
     
-    // Refs
-    messagesContainerRef: messagesContainerRef as React.RefObject<HTMLDivElement>,
-    
-    // Actions
-    setInputValue,
-    handleInputChange,
-    handleKeyDown,
-    handleSubmit,
-    handleChangePath,
-    handleEditMessage,
+    // Navigation actions
     handleSelectConversation,
     handleNewChat,
-    scrollToBottom,
-    handleShareConversation,
     handleDeleteConversation,
-    
-    // File upload actions (re-exported for convenience)
-    handleImageUpload: fileUpload.handleImageUpload,
-    removeImage: fileUpload.removeImage,
-    openImageModal: fileUpload.openImageModal,
-    closeImageModal: fileUpload.closeImageModal,
-    nextImage: fileUpload.nextImage,
-    prevImage: fileUpload.prevImage,
-    handleDragOver: fileUpload.handleDragOver,
-    handleDragLeave: fileUpload.handleDragLeave,
-    handleDrop: fileUpload.handleDrop,
-    clearImages: fileUpload.clearImages,
+    handleShareConversation,
+    scrollToBottom: chatMessages.scrollToBottom,
   };
 };

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 type UploadResult = {
   ok: boolean;
-  file?: any;
-  db?: any;
+  file?: unknown;
+  db?: unknown;
   url?: string;
   message?: string;
 };
@@ -135,7 +135,7 @@ export default function FileUpload({
         const text = xhr.responseText || '';
 
         // coba parse json, fallback ke pesan teks
-        let parsed: any = null;
+        let parsed: unknown = null;
         try {
           parsed = text ? JSON.parse(text) : null;
         } catch (e) {
@@ -145,10 +145,10 @@ export default function FileUpload({
 
         if (xhr.status >= 200 && xhr.status < 300) {
           // Asumsi backend mengembalikan { ok: true, db, file, url }
-          resolve({ ok: true, ...parsed });
+          resolve({ ok: true, ...(parsed as object) });
         } else {
           // berikan message yang berguna
-          const msg = parsed?.message ?? `HTTP ${xhr.status} ${xhr.statusText}`;
+          const msg = (parsed as any)?.message ?? `HTTP ${xhr.status} ${xhr.statusText}`;
           resolve({ ok: false, message: msg });
         }
       };
@@ -182,9 +182,9 @@ export default function FileUpload({
         setError(res.message ?? 'Upload gagal');
         setStatus('Upload gagal');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message ?? 'Terjadi kesalahan saat upload');
+      setError((err as Error)?.message ?? 'Terjadi kesalahan saat upload');
       setStatus('Upload error');
     }
   }

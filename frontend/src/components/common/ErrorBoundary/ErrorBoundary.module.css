@@ -1,0 +1,85 @@
+.errorContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--spacing-4);
+  background-color: var(--color-gray-50);
+}
+
+.errorContent {
+  max-width: 500px;
+  text-align: center;
+  padding: var(--spacing-8);
+  background: white;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.errorTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-red-600);
+  margin-bottom: var(--spacing-4);
+}
+
+.errorMessage {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-6);
+  line-height: var(--line-height-relaxed);
+}
+
+.errorDetails {
+  margin: var(--spacing-4) 0;
+  text-align: left;
+}
+
+.errorDetails summary {
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-700);
+  margin-bottom: var(--spacing-2);
+}
+
+.errorStack {
+  background-color: var(--color-gray-100);
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius);
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-red-600);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorActions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.retryButton {
+  min-width: 120px;
+}
+
+.reloadButton {
+  min-width: 120px;
+}
+
+@media (max-width: 640px) {
+  .errorContent {
+    padding: var(--spacing-6);
+  }
+  
+  .errorActions {
+    flex-direction: column;
+  }
+  
+  .retryButton,
+  .reloadButton {
+    width: 100%;
+  }
+}

@@ -27,7 +27,7 @@ export const tokenStorage = {
     }
   },
 
-  getUser(): any | null {
+  getUser(): unknown | null {
     try {
       const userData = sessionStorage.getItem(USER_KEY);
       return userData ? JSON.parse(userData) : null;
@@ -37,7 +37,7 @@ export const tokenStorage = {
     }
   },
 
-  setUser(user: any): void {
+  setUser(user: unknown): void {
     try {
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
     } catch (error) {

@@ -1,16 +1,25 @@
 import React from 'react';
 import Sidebar from '../layout/Sidebar/Sidebar';
+import type { Conversation } from '../../types/chat.types';
 import styles from '../../pages/Dashboard/Dashboard.module.css';
+
+interface User {
+  id: string;
+  username?: string;
+  email: string;
+  is_active: boolean;
+  image_url?: string;
+}
 
 interface ChatLayoutProps {
   children: React.ReactNode;
-  user: any;
-  conversations: any[];
+  user: User | null;
+  conversations: Conversation[];
   chatHistory: Array<{ id: string; title: string; isActive: boolean }>;
   activatedConversation?: string;
   isSidebarMinimized: boolean;
   onToggleSidebar: () => void;
-  onSelectConversation: (conversation: any) => void;
+  onSelectConversation: (conversation: Conversation) => void;
   onNewChat: () => void;
   onDeleteConversation: (conversationId: string) => void;
   isMobileSidebarOpen?: boolean;

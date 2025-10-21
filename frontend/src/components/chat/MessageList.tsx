@@ -10,6 +10,18 @@ import {
   formatChainDataToObject
 } from '../../utils/pathTraversal';
 
+interface MessageResponse {
+  id: number;
+  content: string;
+  is_user: boolean;
+  is_edited?: boolean;
+  edited_from_message_id?: number;
+}
+
+interface PathMessageResponse {
+  path_messages: MessageResponse[];
+}
+
 interface ChatMessage {
   id?: number;
   content: string;
@@ -73,10 +85,10 @@ const MessageListInternal: React.FC<MessageListProps> = ({
         const allPathsResponse = await messageAPI.getPathMessages(conversationId);
         
         // Extract paths from response - Backend returns array of objects with path_messages
-        const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+        const allPaths: number[][] = (allPathsResponse as PathMessageResponse[]).map((pathData: PathMessageResponse) => {
           if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
             // Extract IDs from message objects
-            return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+            return pathData.path_messages.map((msg: MessageResponse) => msg.id).filter((id: number) => id != null);
           }
           return [];
         }).filter((path: number[]) => path.length > 0);
@@ -235,10 +247,10 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       
       // Get all paths for this conversation
       const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
-      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+      const allPaths: number[][] = (allPathsResponse as PathMessageResponse[]).map((pathData: PathMessageResponse) => {
         if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
           // Extract IDs from message objects
-          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+          return pathData.path_messages.map((msg: MessageResponse) => msg.id).filter((id: number) => id != null);
         }
         return [];
       }).filter((path: number[]) => path.length > 0);
@@ -267,10 +279,10 @@ const MessageListInternal: React.FC<MessageListProps> = ({
       
       // Get all paths for this conversation
       const allPathsResponse = await messageAPI.getPathMessages(conversationId!);
-      const allPaths: number[][] = allPathsResponse.map((pathData: any) => {
+      const allPaths: number[][] = (allPathsResponse as PathMessageResponse[]).map((pathData: PathMessageResponse) => {
         if (pathData.path_messages && Array.isArray(pathData.path_messages)) {
           // Extract IDs from message objects
-          return pathData.path_messages.map((msg: any) => msg.id).filter((id: any) => id != null);
+          return pathData.path_messages.map((msg: MessageResponse) => msg.id).filter((id: number) => id != null);
         }
         return [];
       }).filter((path: number[]) => path.length > 0);

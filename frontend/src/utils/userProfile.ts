@@ -57,7 +57,7 @@ export const clearUserProfile = (): void => {
  */
 export const logout = (): void => {
   clearUserProfile();
-  // TODO: Tambahkan clear auth token jika diperlukan
+  // Clear auth tokens if needed
   // localStorage.removeItem('auth_token');
   // sessionStorage.removeItem('auth_token');
 };
@@ -82,12 +82,11 @@ export const validateFullName = (name: string): { isValid: boolean; error?: stri
 
 /**
  * API function untuk mengirim user profile ke backend
- * TODO: Implementasi dengan backend API
  * @param profile UserProfile
  * @returns Promise<any>
  */
 export const saveUserProfileToAPI = async (profile: UserProfile): Promise<any> => {
-  // TODO: Implementasi dengan backend API
+  // Implementation placeholder - to be implemented with backend API
   // Contoh implementasi:
   /*
   const response = await fetch('/api/user/profile', {

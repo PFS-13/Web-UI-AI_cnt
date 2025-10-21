@@ -57,8 +57,8 @@ const Verification: React.FC = () => {
       } else {
         navigate('/tell-us-about-you');
       }
-    } catch (err : any) {
-      setCodeError(err.message || 'Failed to verify code. Please try again.');
+    } catch (err : unknown) {
+      setCodeError((err as Error).message || 'Failed to verify code. Please try again.');
     } finally{
       setIsLoading(false)
     }
@@ -67,8 +67,8 @@ const Verification: React.FC = () => {
   const handleResendEmail = async () => {
     try {
       await authAPI.resendEmail(email, verifyType);
-    } catch (err: any) { 
-      console.error(err.message);
+    } catch (err: unknown) { 
+      console.error((err as Error).message);
     } finally {
     }
   };

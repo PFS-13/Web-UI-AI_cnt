@@ -35,8 +35,7 @@ const Header: React.FC<HeaderProps> = ({
 
 
   const handleShareClick = () => {
-    // TODO: Implement share functionality
-    console.log('Share clicked');
+    // Function placeholder - to be implemented
   };
 
   const headerClasses = [
@@ -45,25 +44,30 @@ const Header: React.FC<HeaderProps> = ({
   ].filter(Boolean).join(' ');
 
   return (
-    <header className={headerClasses}>
+    <header className={headerClasses} role="banner">
       <div className={styles.container}>
         {/* Desktop Logo */}
         <div className={styles.logo}>
-          <Link to="/" className={styles.logoLink}>
-            <span className={styles.logoIcon}>🤖</span>
+          <Link 
+            to="/" 
+            className={styles.logoLink}
+            aria-label="WebUI AI - Go to homepage"
+          >
+            <span className={styles.logoIcon} aria-hidden="true">🤖</span>
             <span className={styles.logoText}>Web-UI-AI</span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
-        <nav className={styles.nav}>
+        <nav className={styles.nav} role="navigation" aria-label="Main navigation">
           {navigation.map((item) => (
             <Link
               key={item.name}
               to={item.href}
               className={`${styles.navLink} ${isActivePath(item.href) ? styles.active : ''}`}
+              aria-current={isActivePath(item.href) ? 'page' : undefined}
             >
-              <span className={styles.navIcon}>{item.icon}</span>
+              <span className={styles.navIcon} aria-hidden="true">{item.icon}</span>
               <span className={styles.navText}>{item.name}</span>
             </Link>
           ))}

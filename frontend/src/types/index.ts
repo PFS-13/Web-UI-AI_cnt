@@ -6,3 +6,6 @@ export * from './chat.types';
 
 // API Types
 export * from './api.types';
+
+// Toast Types
+export * from './toast.types';

@@ -57,10 +57,10 @@ async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, config);
 
   // handle 204 (No Content)
-  if (response.status === 204) return null as any;
+  if (response.status === 204) return null as T;
 
   const text = await response.text();
-  let data: any = null;
+  let data: unknown = null;
 
   try {
     data = text ? JSON.parse(text) : null;
@@ -77,7 +77,7 @@ async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
 }
 
 
-  async getPathMessages(conversation_id: string): Promise<{ path_messages: any[] }[]> {
+  async getPathMessages(conversation_id: string): Promise<{ path_messages: unknown[] }[]> {
     return this.request(`/message/v1/conversations/${conversation_id}/paths`, { method: 'GET' });
   }
   async getMessages(conversation_id: string): Promise<number[][]> {
@@ -105,7 +105,6 @@ async sendMessage(message: CreateMessagePayload, file?: File): Promise<SendMessa
   if (file) {
     formData.append('file', file);
   }
-  console.log('Sending message with payload:', message, 'and file:', file);
 
   // IMPORTANT: don't set Content-Type header — let fetch/browser set it
   return this.request('/message/v1/messages/create', {
