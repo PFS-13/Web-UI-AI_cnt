@@ -5,14 +5,18 @@ import { authAPI } from '../../../services';
 import SearchPopup from './SearchPopup';
 import type { Conversation } from '../../../types/chat.types';
 
+interface User {
+  id: string;
+  username?: string;
+  email: string;
+  is_active: boolean;
+  image_url?: string;
+}
+
 export interface SidebarProps {
   isMinimized: boolean;
   onToggle: () => void;
-  user?: {
-    username: string;
-    email: string;
-    id: string;
-  };
+  user?: User | null;
   activated_conversation?: string;
   chatHistory?: Array<{ id: string; title: string; isActive: boolean }>;
   conversations?: Conversation[];
@@ -78,12 +82,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleLibrary = () => {
     // Navigate to library or show library content
-    // TODO: Implement library functionality
+    // Function placeholder - to be implemented
   };
 
   const handleUpgrade = () => {
     // Navigate to upgrade page or show upgrade modal
-    // TODO: Implement upgrade functionality
+    // Function placeholder - to be implemented
   };
 
   // Function to measure text width
@@ -118,7 +122,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleProfileDropdownItem = (_action: string) => {
     setIsProfileDropdownOpen(false);
-    // TODO: Implement different actions based on action parameter
     if (_action === 'logout') {
       authAPI.logout().then(() => {
         navigate('/login');
@@ -127,7 +130,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleChatClick = (chatId: string) => {
-    // TODO: Navigate to specific chat
     navigate(`/c/${chatId}`);
   };
 
@@ -164,16 +166,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleConversationAction = (action: string, chatId: string) => {
     switch(action) {
       case 'share':
-        // TODO: Implement share functionality
         // Share functionality not implemented
         break;
       case 'rename':
-        // TODO: Implement rename functionality
         // Rename functionality not implemented
         break;
       case 'delete':
-        // TODO: Implement delete functionality
-        // conversationAPI.deleteConversation(chatId)
         onDeleteConversation(chatId);
         break;
     }

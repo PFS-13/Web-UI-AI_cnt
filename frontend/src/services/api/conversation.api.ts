@@ -25,10 +25,10 @@ class ConversationAPI {
     const response = await fetch(url, config);
 
     // handle 204 (No Content)
-    if (response.status === 204) return null as any;
+    if (response.status === 204) return null as T;
 
     const text = await response.text();
-    let data: any = null;
+    let data: unknown = null;
 
     try {
       data = text ? JSON.parse(text) : null;

@@ -6,6 +6,7 @@ import ChatLayout from '../components/chat/ChatLayout';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
 import { UserProfileInfo } from '../components/common';
+import type { Conversation } from '../types/chat.types';
 import styles from './Dashboard/Dashboard.module.css';
 
 export interface ChatPageProps {
@@ -78,14 +79,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ mode }) => {
     setIsMobileSidebarOpen(false);
   };
 
-  const handleSelectConversation = (conversation: any) => {
-    // TODO: Implement select conversation
-    console.log('Select conversation:', conversation);
+  const handleSelectConversation = (_conversation: Conversation) => {
+    // Function placeholder - to be implemented
   };
 
   const handleNewChat = () => {
-    // TODO: Implement new chat
-    console.log('New chat');
+    // Function placeholder - to be implemented
   };
 
   // Handle attach dropdown

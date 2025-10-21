@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const currentUser = await authAPI.getMe();
       setUser(currentUser);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Session invalid or expired:", err);
       setUser(null);
     } finally {

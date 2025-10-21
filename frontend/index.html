@@ -4,10 +4,81 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebUI AI</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>WebUI AI - Intelligent Chat Application</title>
+    <meta name="description" content="Advanced AI-powered chat application with intelligent conversation capabilities" />
+    <meta name="keywords" content="AI, chat, conversation, artificial intelligence, web application" />
+    <meta name="author" content="WebUI AI Team" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="WebUI AI - Intelligent Chat Application" />
+    <meta property="og:description" content="Advanced AI-powered chat application with intelligent conversation capabilities" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://webui-ai.com" />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WebUI AI - Intelligent Chat Application" />
+    <meta name="twitter:description" content="Advanced AI-powered chat application with intelligent conversation capabilities" />
+    <meta name="twitter:image" content="/twitter-image.png" />
+    
+    <!-- Additional Meta Tags -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://webui-ai.com" />
+    
+    <!-- Critical CSS Inlining -->
+    <style>
+      /* Critical above-the-fold styles */
+      body { 
+        margin: 0; 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background-color: #ffffff;
+        color: #1f2937;
+      }
+      #root { 
+        min-height: 100vh; 
+        display: flex;
+        flex-direction: column;
+      }
+      .header { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        right: 0; 
+        z-index: 1000;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        height: 60px;
+      }
+      .main-content { 
+        padding-top: 60px; 
+        flex: 1;
+      }
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #f3f4f6;
+        border-radius: 50%;
+        border-top-color: #3b82f6;
+        animation: spin 1s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <!-- Resource Hints -->
+    <link rel="preload" href="/src/main.tsx" as="script">
+    <link rel="preload" href="/assets/react-vendor.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//api.example.com">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" role="application" aria-label="WebUI AI Chat Application"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
